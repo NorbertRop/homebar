@@ -2,10 +2,10 @@ import SwiftUI
 
 /// A Slider for a value that is also driven by live Home Assistant state.
 ///
-/// Binding a Slider directly to the live value fights the user: every drag tick sends a
-/// service call, and HA echoes the state back, snapping the thumb around. Instead this
-/// drags a local copy, commits ONE command on release, and only re-syncs from the live
-/// value when the user isn't actively dragging.
+/// Drags a local copy so HA's echoed state never snaps the thumb. Sends **throttled**
+/// updates *during* the drag (so the device changes live, ~5×/sec to avoid flooding the
+/// device) plus the exact final value on release. Re-syncs from the live value only when
+/// the user isn't actively dragging.
 struct HASlider: View {
     let value: Double
     let range: ClosedRange<Double>
@@ -13,6 +13,9 @@ struct HASlider: View {
 
     @State private var local: Double
     @State private var editing = false
+    @State private var lastSent = Date.distantPast
+
+    private let throttle: TimeInterval = 0.2
 
     init(value: Double, in range: ClosedRange<Double>, onCommit: @escaping (Double) -> Void) {
         self.value = value
@@ -24,10 +27,21 @@ struct HASlider: View {
     var body: some View {
         Slider(value: $local, in: range) { isEditing in
             editing = isEditing
-            if !isEditing { onCommit(local) }   // commit once, on release
+            if !isEditing { send(local, force: true) }   // exact final value on release
+        }
+        .onChange(of: local) { _, newValue in
+            if editing { send(newValue, force: false) }  // live, throttled, while dragging
         }
         .onChange(of: value) { _, newValue in
             if !editing { local = newValue.clamped(to: range) }  // sync from HA only when not dragging
+        }
+    }
+
+    private func send(_ v: Double, force: Bool) {
+        let now = Date()
+        if force || now.timeIntervalSince(lastSent) >= throttle {
+            lastSent = now
+            onCommit(v)
         }
     }
 }
