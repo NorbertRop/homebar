@@ -38,3 +38,14 @@ private func entity(_ id: String, state: String = "on", updated: Date) -> Entity
     _ = monitor.evaluate([entity("sensor.x", state: "unavailable", updated: now)], now: now, window: 900)
     #expect(spy.offline == ["sensor.x"])
 }
+
+@Test func firstEvaluateBaselinesWithoutNotifying() {
+    let spy = SpyNotifier()
+    let monitor = StalenessMonitor(notifier: spy)
+    let now = Date(timeIntervalSince1970: 0)
+    // Already offline on the very first evaluate → silent baseline, no notification storm.
+    _ = monitor.evaluate([entity("sensor.x", state: "unavailable", updated: now)], now: now, window: 900)
+    #expect(spy.offline.isEmpty)
+    _ = monitor.evaluate([entity("sensor.x", state: "unavailable", updated: now)], now: now, window: 900)
+    #expect(spy.offline.isEmpty)   // still no transition
+}

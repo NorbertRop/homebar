@@ -92,7 +92,15 @@ import Observation
     }
 
     private func evaluateStaleness() {
-        let fresh = monitor.evaluate(Array(store.entities.values), now: Date(),
+        // Track offline/stale only for "real" devices the user cares about — a useful
+        // domain, not hidden, and either placed in a room or pinned — so the dozens of
+        // half-configured integration entities don't keep the menu-bar dot red.
+        let relevant = store.entities.values.filter { e in
+            !settings.hidden.contains(e.entityID)
+                && isUsefulDomain(e.entityID)
+                && (store.registry.areaName(for: e.entityID) != nil || settings.pinned.contains(e.entityID))
+        }
+        let fresh = monitor.evaluate(Array(relevant), now: Date(),
                                      window: settings.stalenessWindow,
                                      perEntityWindow: settings.perEntityWindow)
         offlineEntityIDs = Set(fresh.filter { $0.value != .fresh }.map(\.key))

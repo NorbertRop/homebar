@@ -23,14 +23,16 @@ struct MenuContentView: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 8) {
-                        if !grouped.pinned.isEmpty { section("⭐ Pinned", ids: grouped.pinned) }
+                        if !grouped.pinned.isEmpty { section("Pinned", ids: grouped.pinned) }
                         ForEach(grouped.areas, id: \.name) { area in areaView(area) }
                         if !grouped.unassigned.looseEntityIDs.isEmpty || !grouped.unassigned.deviceCards.isEmpty {
                             areaView(grouped.unassigned)
                         }
                         if !automations.isEmpty {
-                            Text("⚙ Automations").font(.headline)
-                            ForEach(automations) { AutomationRow(model: model, entityID: $0.entityID) }
+                            VStack(alignment: .leading, spacing: 4) {
+                                sectionHeader("Automations")
+                                ForEach(automations) { AutomationRow(model: model, entityID: $0.entityID) }
+                            }
                         }
                     }.padding(.horizontal, 4)
                 }.frame(maxHeight: 460)
@@ -53,16 +55,23 @@ struct MenuContentView: View {
         }
     }
 
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.caption).fontWeight(.semibold)
+            .foregroundStyle(.secondary)
+            .padding(.top, 4)
+    }
+
     private func section(_ title: String, ids: [String]) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.headline)
+            sectionHeader(title)
             ForEach(ids, id: \.self) { EntityRow(model: model, entityID: $0) }
         }
     }
 
     private func areaView(_ area: AreaSection) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(area.name).font(.headline)
+            sectionHeader(area.name)
             ForEach(area.deviceCards, id: \.deviceID) { DeviceCardView(model: model, card: $0) }
             ForEach(area.looseEntityIDs, id: \.self) { EntityRow(model: model, entityID: $0) }
         }
