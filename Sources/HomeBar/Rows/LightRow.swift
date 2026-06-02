@@ -13,7 +13,11 @@ struct LightRow: View {
                     model.perform(HACommand.setLight(entityID, on: on,
                         brightnessPercent: nil, rgb: nil, colorTempKelvin: nil))
                 })) {
-                    HStack { Image(systemName: "lightbulb").frame(width: 18); Text(s.friendlyName) }
+                    HStack {
+                        Image(systemName: light.isOn ? "lightbulb.fill" : "lightbulb")
+                            .frame(width: 18).foregroundStyle(light.isOn ? .yellow : .secondary)
+                        Text(s.friendlyName)
+                    }
                 }.toggleStyle(.switch)
 
                 if light.isOn {

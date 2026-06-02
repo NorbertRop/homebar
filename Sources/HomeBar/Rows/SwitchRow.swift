@@ -10,7 +10,7 @@ struct SwitchRow: View {
                 get: { s.state == "on" },
                 set: { _ in model.toggle(entityID) }
             )) {
-                HStack { Image(systemName: "power").frame(width: 18); Text(s.friendlyName) }
+                HStack { Image(systemName: "power").frame(width: 18).foregroundStyle(.secondary); Text(s.friendlyName) }
             }
             .toggleStyle(.switch)
         }

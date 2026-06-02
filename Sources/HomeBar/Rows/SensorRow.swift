@@ -7,7 +7,7 @@ struct SensorRow: View {
     var body: some View {
         if let s = model.entity(entityID) {
             HStack {
-                Image(systemName: icon(for: s.deviceClass)).frame(width: 18)
+                Image(systemName: icon(for: s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
                 Text(s.friendlyName).lineLimit(1)
                 Spacer()
                 Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit()

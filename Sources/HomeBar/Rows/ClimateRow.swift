@@ -16,6 +16,7 @@ struct ClimateRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Image(systemName: "snowflake").frame(width: 18)
+                        .foregroundStyle(c.hvacMode == "off" ? Color.secondary : Color.blue)
                     Text(s.friendlyName)
                     Spacer()
                     if let tgt = c.targetTemperature {

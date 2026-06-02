@@ -15,6 +15,7 @@ struct AutomationRow: View {
                     set: { model.perform(HACommand.armAutomation(entityID, armed: $0)) }))
                     .toggleStyle(.switch).labelsHidden()
             }
+            .rowStyle()
         }
     }
 }
