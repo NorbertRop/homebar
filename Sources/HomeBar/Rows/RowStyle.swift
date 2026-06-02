@@ -19,4 +19,16 @@ private struct RowStyle: ViewModifier {
 
 extension View {
     func rowStyle() -> some View { modifier(RowStyle()) }
+
+    /// Right-click curation: pin, hide, or hide the whole device.
+    func entityContextMenu(_ model: AppModel, _ id: String) -> some View {
+        contextMenu {
+            Button(model.isPinned(id) ? "Unpin" : "Pin",
+                   systemImage: model.isPinned(id) ? "pin.slash" : "pin") { model.togglePin(id) }
+            Button("Hide", systemImage: "eye.slash") { model.hide(id) }
+            if model.hasDevice(id) {
+                Button("Hide whole device", systemImage: "eye.slash.fill") { model.hideDevice(of: id) }
+            }
+        }
+    }
 }

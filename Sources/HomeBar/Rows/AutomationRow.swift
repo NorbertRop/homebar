@@ -16,6 +16,7 @@ struct AutomationRow: View {
                     .toggleStyle(.switch).labelsHidden()
             }
             .rowStyle()
+            .entityContextMenu(model, entityID)
         }
     }
 }

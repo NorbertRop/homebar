@@ -111,6 +111,26 @@ import Observation
     func perform(_ call: ServiceCall) { Task { try? await client?.send(call) } }
     func toggle(_ id: String) { perform(HACommand.toggle(id)) }
 
+    // Curation from the menu's right-click context menu.
+    func isPinned(_ id: String) -> Bool { settings.pinned.contains(id) }
+    func hasDevice(_ id: String) -> Bool { store.registry.deviceID(for: id) != nil }
+    func togglePin(_ id: String) {
+        if settings.pinned.contains(id) { settings.pinned.remove(id) }
+        else { settings.pinned.insert(id); settings.hidden.remove(id) }
+        saveSettings(); dataVersion &+= 1
+    }
+    func hide(_ id: String) {
+        settings.hidden.insert(id); settings.pinned.remove(id)
+        saveSettings(); dataVersion &+= 1
+    }
+    func hideDevice(of id: String) {
+        guard let did = store.registry.deviceID(for: id) else { return hide(id) }
+        for e in store.entities.keys where store.registry.deviceID(for: e) == did {
+            settings.hidden.insert(e); settings.pinned.remove(e)
+        }
+        saveSettings(); dataVersion &+= 1
+    }
+
     func freshness(of id: String) -> Freshness {
         guard let s = store.entities[id] else { return .offline }
         return HomeBarCore.freshness(of: s, now: Date(),

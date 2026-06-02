@@ -23,23 +23,23 @@ struct MenuContentView: View {
                 onboarding
             } else {
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 10) {
                         if !grouped.pinned.isEmpty { section("Pinned", ids: grouped.pinned) }
                         ForEach(grouped.areas, id: \.name) { area in areaView(area) }
                         if !grouped.unassigned.looseEntityIDs.isEmpty || !grouped.unassigned.deviceCards.isEmpty {
                             areaView(grouped.unassigned)
                         }
                         if !automations.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: 2) {
                                 sectionHeader("Automations")
                                 ForEach(automations) { AutomationRow(model: model, entityID: $0.entityID) }
                             }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 2)
                 }
-                .frame(height: 380)   // definite height: a ScrollView with only maxHeight collapses to 0 in a self-sizing MenuBarExtra panel
+                .frame(height: 420)
             }
             Divider()
             footer
@@ -49,32 +49,34 @@ struct MenuContentView: View {
     }
 
     private var header: some View {
-        HStack {
-            Image(systemName: "house"); Text("HomeBar").font(.headline)
+        HStack(spacing: 6) {
+            Image(systemName: "house.fill").foregroundStyle(.tint)
+            Text("HomeBar").font(.headline)
             Spacer()
-            Circle().frame(width: 7, height: 7)
-                .foregroundStyle(model.connection == .authenticated ? .green : .secondary)
-            Text(model.connection == .authenticated ? "Connected" : "Offline")
+            Circle().frame(width: 6, height: 6)
+                .foregroundStyle(model.connection == .authenticated ? .green : .orange)
+            Text(model.connection == .authenticated ? "Connected" : "Reconnecting…")
                 .font(.caption).foregroundStyle(.secondary)
         }
+        .padding(.horizontal, 4)
     }
 
     private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.caption).fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-            .padding(.top, 4)
+        Text(title.uppercased())
+            .font(.caption2).fontWeight(.semibold).kerning(0.5)
+            .foregroundStyle(.tertiary)
+            .padding(.horizontal, 6).padding(.top, 2)
     }
 
     private func section(_ title: String, ids: [String]) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             sectionHeader(title)
             ForEach(ids, id: \.self) { EntityRow(model: model, entityID: $0) }
         }
     }
 
     private func areaView(_ area: AreaSection) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             sectionHeader(area.name)
             ForEach(area.deviceCards, id: \.deviceID) { DeviceCardView(model: model, card: $0) }
             ForEach(area.looseEntityIDs, id: \.self) { EntityRow(model: model, entityID: $0) }
@@ -87,18 +89,21 @@ struct MenuContentView: View {
             Text("Add your server URL and a long-lived access token in Settings.")
                 .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
             SettingsLink { Text("Open Settings…") }
-        }.padding()
+        }.padding().frame(maxWidth: .infinity)
     }
 
     private var footer: some View {
-        HStack {
+        HStack(spacing: 12) {
             if model.offlineCount > 0 {
-                Label("\(model.offlineCount) offline", systemImage: "exclamationmark.triangle")
+                Label("\(model.offlineCount) offline", systemImage: "exclamationmark.triangle.fill")
                     .font(.caption).foregroundStyle(.red)
             }
             Spacer()
-            SettingsLink { Image(systemName: "gear") }
+            SettingsLink { Image(systemName: "gearshape") }
+                .buttonStyle(.plain).foregroundStyle(.secondary)
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
+                .buttonStyle(.plain).foregroundStyle(.secondary)
         }
+        .padding(.horizontal, 4)
     }
 }

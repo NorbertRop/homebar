@@ -7,7 +7,7 @@ struct EntityRow: View {
     var nameOverride: String? = nil
 
     var body: some View {
-        dispatched.rowStyle()
+        dispatched.rowStyle().entityContextMenu(model, entityID)
     }
 
     @ViewBuilder private var dispatched: some View {
