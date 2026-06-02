@@ -98,14 +98,10 @@ import Observation
     }
 
     private func evaluateStaleness() {
-        // Track offline/stale only for "real" devices the user cares about — a useful
-        // domain, not hidden, and either placed in a room or pinned — so the dozens of
-        // half-configured integration entities don't keep the menu-bar dot red.
-        let relevant = store.entities.values.filter { e in
-            !settings.hidden.contains(e.entityID)
-                && isUsefulDomain(e.entityID)
-                && (store.registry.areaName(for: e.entityID) != nil || settings.pinned.contains(e.entityID))
-        }
+        // Only watch entities the user explicitly PINNED, so a sea of offline
+        // integration/diagnostic entities never lights up the menu-bar dot. Pinning a
+        // device opts it into the offline indicator + notification.
+        let relevant = store.entities.values.filter { settings.pinned.contains($0.entityID) }
         let fresh = monitor.evaluate(Array(relevant), now: Date(),
                                      window: settings.stalenessWindow,
                                      perEntityWindow: settings.perEntityWindow)
