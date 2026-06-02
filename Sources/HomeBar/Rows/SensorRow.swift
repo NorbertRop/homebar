@@ -9,7 +9,7 @@ struct SensorRow: View {
     var body: some View {
         if let s = model.entity(entityID) {
             HStack {
-                Image(systemName: icon(for: s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
+                Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
                 Text(nameOverride ?? s.friendlyName).lineLimit(1)
                 Spacer()
                 Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
@@ -50,24 +50,6 @@ struct SensorRow: View {
         case "moisture": s.state == "on" ? "Wet" : "Dry"
         case "connectivity": s.state == "on" ? "Connected" : "Disconnected"
         default: s.state == "on" ? "On" : "Off"
-        }
-    }
-
-    private func icon(for deviceClass: String?) -> String {
-        switch deviceClass {
-        case "temperature": "thermometer"
-        case "humidity": "humidity.fill"
-        case "carbon_dioxide": "aqi.medium"
-        case "pressure", "atmospheric_pressure": "barometer"
-        case "illuminance": "sun.max.fill"
-        case "power", "energy": "bolt.fill"
-        case "battery": "battery.50"
-        case "timestamp": "clock"
-        case "door", "window", "opening": "door.left.hand.closed"
-        case "motion": "figure.walk"
-        case "moisture": "drop.fill"
-        case "connectivity": "wifi"
-        default: "circle.dotted"
         }
     }
 }

@@ -10,19 +10,21 @@ public struct Settings: Sendable, Codable, Equatable {
     public var notifyOffline: Bool
     public var hideOffline: Bool
     public var showDiagnostic: Bool
+    public var menuBarEntityID: String?   // entity whose value shows in the menu bar (nil = icon only)
 
     public init(serverURL: URL? = nil, stalenessWindow: TimeInterval = 900,
                 perEntityWindow: [String: TimeInterval] = [:], pinned: [String] = [],
                 hidden: Set<String> = [], notifyOffline: Bool = true, hideOffline: Bool = true,
-                showDiagnostic: Bool = false, order: [String] = []) {
+                showDiagnostic: Bool = false, order: [String] = [], menuBarEntityID: String? = nil) {
         self.serverURL = serverURL; self.stalenessWindow = stalenessWindow
         self.perEntityWindow = perEntityWindow; self.pinned = pinned
         self.hidden = hidden; self.notifyOffline = notifyOffline; self.hideOffline = hideOffline
         self.showDiagnostic = showDiagnostic; self.order = order
+        self.menuBarEntityID = menuBarEntityID
     }
 
     enum CodingKeys: String, CodingKey {
-        case serverURL, stalenessWindow, perEntityWindow, pinned, hidden, notifyOffline, hideOffline, showDiagnostic, order
+        case serverURL, stalenessWindow, perEntityWindow, pinned, hidden, notifyOffline, hideOffline, showDiagnostic, order, menuBarEntityID
     }
 
     /// Forgiving decoder: missing keys fall back to defaults, so settings files
@@ -39,6 +41,7 @@ public struct Settings: Sendable, Codable, Equatable {
         hideOffline = try c.decodeIfPresent(Bool.self, forKey: .hideOffline) ?? d.hideOffline
         showDiagnostic = try c.decodeIfPresent(Bool.self, forKey: .showDiagnostic) ?? d.showDiagnostic
         order = try c.decodeIfPresent([String].self, forKey: .order) ?? d.order
+        menuBarEntityID = try c.decodeIfPresent(String.self, forKey: .menuBarEntityID) ?? d.menuBarEntityID
     }
 
     public static func defaultURL() -> URL {

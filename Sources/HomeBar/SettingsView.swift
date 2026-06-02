@@ -51,7 +51,23 @@ struct SettingsView: View {
                         launchAtLogin = (SMAppService.mainApp.status == .enabled)
                     }
                 }))
+
+            Picker("Menu bar shows", selection: Binding(
+                get: { model.settings.menuBarEntityID },
+                set: { model.settings.menuBarEntityID = $0; model.saveSettings() })) {
+                Text("Icon only").tag(String?.none)
+                ForEach(menuBarCandidates, id: \.entityID) { s in
+                    Text(s.friendlyName).tag(String?.some(s.entityID))
+                }
+            }
         }.padding()
+    }
+
+    /// Numeric sensors offered for the menu-bar readout.
+    private var menuBarCandidates: [EntityState] {
+        model.store.entities.values
+            .filter { $0.domain == .sensor && Double($0.state) != nil }
+            .sorted { $0.friendlyName < $1.friendlyName }
     }
 
     private func test() async {
