@@ -5,6 +5,11 @@ struct ClimateRow: View {
     let model: AppModel
     let entityID: String
 
+    private func tempSummary(current: Double?, target: Double) -> String {
+        if let cur = current { return String(format: "%.0f°→%.0f°", cur, target) }
+        return String(format: "→%.0f°", target)
+    }
+
     var body: some View {
         if let s = model.entity(entityID) {
             let c = ClimateState(from: s)
@@ -13,8 +18,8 @@ struct ClimateRow: View {
                     Image(systemName: "snowflake").frame(width: 18)
                     Text(s.friendlyName)
                     Spacer()
-                    if let cur = c.currentTemperature, let tgt = c.targetTemperature {
-                        Text("\(cur, specifier: "%.0f")°→\(tgt, specifier: "%.0f")°")
+                    if let tgt = c.targetTemperature {
+                        Text(tempSummary(current: c.currentTemperature, target: tgt))
                             .foregroundStyle(.secondary).monospacedDigit()
                     }
                 }

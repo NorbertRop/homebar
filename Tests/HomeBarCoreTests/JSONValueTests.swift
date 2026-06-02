@@ -20,3 +20,12 @@ import Foundation
     let box = try fmt.decode(Box.self, from: data)
     #expect(abs(box.t.timeIntervalSince1970 - 1780395072.345678) < 0.01)
 }
+
+@Test func coercedStringStringifiesScalars() {
+    #expect(JSONValue.int(3).coercedString == "3")
+    #expect(JSONValue.double(2.5).coercedString == "2.5")
+    #expect(JSONValue.string("x").coercedString == "x")
+    #expect(JSONValue.bool(true).coercedString == "true")
+    #expect(JSONValue.null.coercedString == nil)
+    #expect(JSONValue.array([]).coercedString == nil)
+}

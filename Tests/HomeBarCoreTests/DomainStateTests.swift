@@ -30,6 +30,18 @@ private func loadStates() throws -> [EntityState] {
     #expect(cs.fanModes == ["auto", "low", "high"])
 }
 
+// Real-world: some climate integrations report fan_mode as an integer while
+// fan_modes are strings (observed on a live A/C). fanMode must coerce to String.
+@Test func climateFanModeCoercesIntegerToString() {
+    let s = EntityState(entityID: "climate.ac", state: "cool",
+        attributes: ["fan_mode": .int(3),
+                     "fan_modes": .array([.string("1"), .string("2"), .string("3")])],
+        lastChanged: .now, lastUpdated: .now)
+    let cs = ClimateState(from: s)
+    #expect(cs.fanMode == "3")
+    #expect(cs.fanModes == ["1", "2", "3"])
+}
+
 @Test func freshnessClassifies() {
     let now = Date(timeIntervalSince1970: 1000)
     func mk(_ state: String, ageSeconds: TimeInterval) -> EntityState {

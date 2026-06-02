@@ -17,7 +17,15 @@ struct SensorRow: View {
     }
     private func displayValue(_ s: EntityState) -> String {
         if s.domain == .binarySensor { return binaryLabel(s) }
-        return "\(s.state)\(s.unit.map { " \($0)" } ?? "")"
+        let value = roundedNumber(s.state) ?? s.state
+        return "\(value)\(s.unit.map { " \($0)" } ?? "")"
+    }
+    /// Trim noisy float precision from numeric sensor states (e.g. 25.0534 -> 25.1,
+    /// 581.0 -> 581); leaves non-numeric states ("on", "home") untouched.
+    private func roundedNumber(_ raw: String) -> String? {
+        guard let d = Double(raw) else { return nil }
+        if d == d.rounded() { return String(Int(d)) }
+        return String(format: "%.1f", d)
     }
     private func binaryLabel(_ s: EntityState) -> String {
         switch s.deviceClass {

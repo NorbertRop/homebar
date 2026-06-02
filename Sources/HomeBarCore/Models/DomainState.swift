@@ -49,7 +49,7 @@ public struct ClimateState: Sendable, Equatable {
         minTemp = s.attributes["min_temp"]?.doubleValue ?? 7
         maxTemp = s.attributes["max_temp"]?.doubleValue ?? 35
         targetTempStep = s.attributes["target_temp_step"]?.doubleValue ?? 0.5
-        fanMode = s.attributes["fan_mode"]?.stringValue
+        fanMode = s.attributes["fan_mode"]?.coercedString
         fanModes = s.attributes["fan_modes"]?.stringArray ?? []
     }
 }

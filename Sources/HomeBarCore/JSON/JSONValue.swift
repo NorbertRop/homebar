@@ -44,6 +44,17 @@ public enum JSONValue: Sendable, Equatable, Codable {
     public var arrayValue: [JSONValue]? { if case .array(let a) = self { return a }; return nil }
     public var stringArray: [String]? { arrayValue?.compactMap(\.stringValue) }
     public var isNull: Bool { self == .null }
+    /// String value, coercing int/double/bool to text. Home Assistant sometimes
+    /// returns a number where a string is expected (e.g. climate `fan_mode`).
+    public var coercedString: String? {
+        switch self {
+        case .string(let s): return s
+        case .int(let i): return String(i)
+        case .double(let d): return String(d)
+        case .bool(let b): return String(b)
+        default: return nil
+        }
+    }
 }
 
 public enum HAJSON {
