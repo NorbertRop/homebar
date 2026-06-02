@@ -18,7 +18,6 @@ struct VacuumRow: View {
                 Image(systemName: "sparkles").frame(width: 18)
                     .foregroundStyle(isCleaning(s) ? Color.blue : .secondary)
                 Text(nameOverride ?? s.friendlyName).lineLimit(1)
-                Text(s.state.capitalized).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                 Spacer()
                 if hasModes {
                     Menu {

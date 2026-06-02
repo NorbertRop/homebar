@@ -76,10 +76,21 @@ struct MenuContentView: View {
     }
 
     private func areaView(_ area: AreaSection) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        // Controls first, then sensor device-cards, then loose readings.
+        let controls = area.looseEntityIDs.filter(isControl).sorted()
+        let readings = area.looseEntityIDs.filter { !isControl($0) }.sorted()
+        return VStack(alignment: .leading, spacing: 2) {
             sectionHeader(area.name)
+            ForEach(controls, id: \.self) { EntityRow(model: model, entityID: $0) }
             ForEach(area.deviceCards, id: \.deviceID) { DeviceCardView(model: model, card: $0) }
-            ForEach(area.looseEntityIDs, id: \.self) { EntityRow(model: model, entityID: $0) }
+            ForEach(readings, id: \.self) { EntityRow(model: model, entityID: $0) }
+        }
+    }
+
+    private func isControl(_ id: String) -> Bool {
+        switch Domain(entityID: id) {
+        case .light, .switchType, .climate, .vacuum: return true
+        default: return false
         }
     }
 

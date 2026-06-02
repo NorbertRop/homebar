@@ -30,12 +30,12 @@ struct ClimateRow: View {
                         HStack(spacing: 6) {
                             Button {
                                 model.perform(HACommand.setClimateTemperature(entityID, max(c.minTemp, tgt - c.targetTempStep)))
-                            } label: { Image(systemName: "minus") }
+                            } label: { Image(systemName: "minus").frame(width: 12) }
                             Text("\(tgt, specifier: "%.0f")°").font(.title3).fontWeight(.semibold)
                                 .monospacedDigit().frame(minWidth: 36)
                             Button {
                                 model.perform(HACommand.setClimateTemperature(entityID, min(c.maxTemp, tgt + c.targetTempStep)))
-                            } label: { Image(systemName: "plus") }
+                            } label: { Image(systemName: "plus").frame(width: 12) }
                         }
                         .buttonStyle(.bordered).controlSize(.small)
                     }
