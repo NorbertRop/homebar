@@ -7,15 +7,17 @@ struct EntityRow: View {
     var nameOverride: String? = nil
 
     var body: some View {
-        dispatched.rowStyle().entityContextMenu(model, entityID)
+        styled.entityContextMenu(model, entityID)
     }
 
-    @ViewBuilder private var dispatched: some View {
+    // Rich multi-control entities get a contained "tile"; simple readings/toggles stay flat.
+    @ViewBuilder private var styled: some View {
         switch Domain(entityID: entityID) {
-        case .switchType: SwitchRow(model: model, entityID: entityID, nameOverride: nameOverride)
-        case .light: LightRow(model: model, entityID: entityID, nameOverride: nameOverride)
-        case .climate: ClimateRow(model: model, entityID: entityID, nameOverride: nameOverride)
-        default: SensorRow(model: model, entityID: entityID, nameOverride: nameOverride)
+        case .light:   LightRow(model: model, entityID: entityID, nameOverride: nameOverride).controlTile()
+        case .climate: ClimateRow(model: model, entityID: entityID, nameOverride: nameOverride).controlTile()
+        case .vacuum:  VacuumRow(model: model, entityID: entityID, nameOverride: nameOverride).controlTile()
+        case .switchType: SwitchRow(model: model, entityID: entityID, nameOverride: nameOverride).rowStyle()
+        default: SensorRow(model: model, entityID: entityID, nameOverride: nameOverride).rowStyle()
         }
     }
 }

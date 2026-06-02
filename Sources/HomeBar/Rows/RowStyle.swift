@@ -20,6 +20,16 @@ private struct RowStyle: ViewModifier {
 extension View {
     func rowStyle() -> some View { modifier(RowStyle()) }
 
+    /// A subtle card for multi-control rows (light/climate/vacuum) so their controls
+    /// read as a contained tile rather than floating among the flat sensor rows.
+    func controlTile() -> some View {
+        padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.primary.opacity(0.05)))
+    }
+
     /// Right-click curation: pin, hide, or hide the whole device.
     func entityContextMenu(_ model: AppModel, _ id: String) -> some View {
         contextMenu {

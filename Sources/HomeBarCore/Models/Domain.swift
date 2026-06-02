@@ -1,5 +1,5 @@
 public enum Domain: String, Sendable, CaseIterable {
-    case sensor, binarySensor, switchType, light, climate, automation, scene, script, other
+    case sensor, binarySensor, switchType, light, climate, automation, scene, script, vacuum, other
 
     public init(entityID: String) {
         let prefix = entityID.split(separator: ".").first.map(String.init) ?? ""
@@ -12,6 +12,7 @@ public enum Domain: String, Sendable, CaseIterable {
         case "automation": self = .automation
         case "scene": self = .scene
         case "script": self = .script
+        case "vacuum": self = .vacuum
         default: self = .other
         }
     }
