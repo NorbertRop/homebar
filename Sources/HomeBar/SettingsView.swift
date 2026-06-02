@@ -1,5 +1,6 @@
 import SwiftUI
 import HomeBarCore
+import ServiceManagement
 
 struct SettingsView: View {
     @Bindable var model: AppModel
@@ -7,6 +8,7 @@ struct SettingsView: View {
     @State private var token: String = ""
     @State private var testResult: String = ""
     @State private var search: String = ""
+    @State private var launchAtLogin = false
 
     var body: some View {
         TabView {
@@ -18,6 +20,7 @@ struct SettingsView: View {
         .onAppear {
             urlString = model.settings.serverURL?.absoluteString ?? ""
             token = model.tokenStore.read() ?? ""
+            launchAtLogin = (SMAppService.mainApp.status == .enabled)
         }
     }
 
@@ -35,6 +38,18 @@ struct SettingsView: View {
                 model.saveSettings()
                 model.restart()
             }.keyboardShortcut(.defaultAction)
+
+            Toggle("Launch at login", isOn: Binding(
+                get: { launchAtLogin },
+                set: { on in
+                    do {
+                        if on { try SMAppService.mainApp.register() }
+                        else { try SMAppService.mainApp.unregister() }
+                        launchAtLogin = on
+                    } catch {
+                        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+                    }
+                }))
         }.padding()
     }
 
