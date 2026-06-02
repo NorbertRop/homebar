@@ -16,6 +16,7 @@ struct MenuBarLabel: View {
                 Text(s.menuBarValue)
             }
             .foregroundStyle(tint)
+            .padding(.trailing, -3)
         } else {
             Image(systemName: offline > 0 ? "house.fill" : "house")
                 .symbolRenderingMode(.palette)
