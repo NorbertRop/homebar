@@ -49,28 +49,31 @@ struct LightRow: View {
                         if light.supportsColor {
                             HStack(spacing: 8) {
                                 Image(systemName: "paintpalette.fill").font(.caption).foregroundStyle(.secondary).frame(width: 16)
-                                ColorPicker(selection: Binding(
-                                    get: { light.rgb.map { Color(.sRGB, red: Double($0.r)/255,
-                                           green: Double($0.g)/255, blue: Double($0.b)/255) } ?? .white },
-                                    set: { c in
-                                        model.perform(HACommand.setLight(entityID, on: true,
-                                            brightnessPercent: light.brightnessPercent, rgb: c.toRGB(), colorTempKelvin: nil))
-                                    }
-                                )) { Text("Color").font(.caption).foregroundStyle(.secondary) }
-                                Spacer()
+                                HueSlider(hue: light.rgb.map(rgbToHue) ?? 0) { h in
+                                    model.perform(HACommand.setLight(entityID, on: true,
+                                        brightnessPercent: light.brightnessPercent, rgb: rgbFromHue(h), colorTempKelvin: nil))
+                                }
                             }
+                            HStack(spacing: 7) {
+                                ForEach(lightPresets) { p in
+                                    Button {
+                                        model.perform(HACommand.setLight(entityID, on: true,
+                                            brightnessPercent: light.brightnessPercent, rgb: p.rgb, colorTempKelvin: nil))
+                                    } label: {
+                                        Circle().fill(p.color).frame(width: 18, height: 18)
+                                            .overlay(Circle().strokeBorder(.primary.opacity(0.15), lineWidth: 1))
+                                    }
+                                    .buttonStyle(.plain)
+                                    .help(p.name)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.leading, 24)
                         }
                     }
                     .padding(.leading, 4)
                 }
             }
         }
-    }
-}
-
-extension Color {
-    func toRGB() -> RGB {
-        let ns = NSColor(self).usingColorSpace(.sRGB) ?? .white
-        return RGB(r: Int(ns.redComponent * 255), g: Int(ns.greenComponent * 255), b: Int(ns.blueComponent * 255))
     }
 }
