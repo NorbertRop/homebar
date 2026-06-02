@@ -20,7 +20,7 @@ struct ConnectOptions: ParsableArguments {
         let urlStr = url ?? env["HOMEBAR_URL"] ?? settings.serverURL?.absoluteString
         guard let urlStr, let base = URL(string: urlStr), let ws = haWebSocketURL(from: base)
         else { throw ValidationError("Provide --url or set HOMEBAR_URL") }
-        guard let tok = token ?? env["HOMEBAR_TOKEN"] ?? KeychainTokenStore().read()
+        guard let tok = token ?? env["HOMEBAR_TOKEN"] ?? FileTokenStore().read()
         else { throw ValidationError("Provide --token or set HOMEBAR_TOKEN") }
         let client = HAClient(url: ws, token: tok, transport: URLSessionWebSocketTransport(url: ws))
         try await client.connect()

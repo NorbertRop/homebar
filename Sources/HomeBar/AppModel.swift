@@ -22,7 +22,7 @@ import Observation
     static let cacheURL = Settings.defaultURL().deletingLastPathComponent()
         .appendingPathComponent("state-cache.json")
 
-    init(tokenStore: TokenStore = KeychainTokenStore()) {
+    init(tokenStore: TokenStore = FileTokenStore()) {
         self.tokenStore = tokenStore
         let n = UserNotificationNotifier()
         self.notifier = n
