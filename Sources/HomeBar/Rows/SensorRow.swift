@@ -12,8 +12,12 @@ struct SensorRow: View {
                 Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
                 Text(nameOverride ?? s.friendlyName).lineLimit(1)
                 Spacer()
+                if let pts = model.sparkline(for: entityID), pts.count > 1 {
+                    Sparkline(values: pts).frame(width: 42, height: 14).foregroundStyle(.tertiary)
+                }
                 Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
             }
+            .onAppear { if Double(s.state) != nil { model.loadHistory(entityID) } }
         }
     }
 

@@ -76,6 +76,21 @@ public actor HAClient {
         }
     }
 
+    /// Numeric history samples for one entity over the last `hours`, oldest→newest.
+    public func history(entityID: String, hours: Double) async throws -> [Double] {
+        let end = Date(), start = end.addingTimeInterval(-hours * 3600)
+        let id = nextID; nextID += 1
+        let frame = historyFrame(id: id, entityID: entityID, start: start, end: end)
+        let result = try await withCheckedThrowingContinuation { (c: CheckedContinuation<JSONValue, Error>) in
+            pending[id] = c
+            Task { try? await self.transport.send(frame) }
+        }
+        guard let arr = result[entityID]?.arrayValue else { return [] }
+        return arr.compactMap { item in
+            (item["s"] ?? item["state"])?.coercedString.flatMap(Double.init)
+        }
+    }
+
     public func disconnect() async {
         receiveTask?.cancel(); receiveTask = nil
         await transport.close()

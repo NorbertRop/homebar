@@ -62,6 +62,15 @@ public func simpleFrame(id: Int, type: String) -> String {
 public func subscribeFrame(id: Int, eventType: String) -> String {
     encode(["id": .int(id), "type": .string("subscribe_events"), "event_type": .string(eventType)])
 }
+public func historyFrame(id: Int, entityID: String, start: Date, end: Date) -> String {
+    let iso = ISO8601DateFormatter()
+    return encode([
+        "id": .int(id), "type": .string("history/history_during_period"),
+        "start_time": .string(iso.string(from: start)), "end_time": .string(iso.string(from: end)),
+        "entity_ids": .array([.string(entityID)]),
+        "minimal_response": .bool(true), "no_attributes": .bool(true),
+    ])
+}
 public func callServiceFrame(id: Int, _ call: ServiceCall) throws -> String {
     var obj: [String: JSONValue] = [
         "id": .int(id), "type": .string("call_service"),

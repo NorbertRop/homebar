@@ -12,6 +12,9 @@ import Observation
     /// re-renders on data changes — MenuBarExtra content doesn't reliably track the nested
     /// @Observable `store.entities`.
     var dataVersion = 0
+    /// Cached ~6h sparkline samples per sensor, populated lazily when a row appears.
+    var histories: [String: [Double]] = [:]
+    private var historyFetchedAt: [String: Date] = [:]
 
     let tokenStore: TokenStore
     private let notifier: UserNotificationNotifier
@@ -160,6 +163,26 @@ import Observation
         var list = displayed; list.swapAt(i, j)
         settings.order = settings.order.filter { !list.contains($0) } + list
         saveSettings(); dataVersion &+= 1
+    }
+
+    /// Lazily fetch ~6h of history for a numeric sensor (cached ~5 min) to draw its sparkline.
+    func loadHistory(_ id: String) {
+        if let t = historyFetchedAt[id], Date().timeIntervalSince(t) < 300 { return }
+        guard let client else { return }
+        historyFetchedAt[id] = Date()
+        Task {
+            guard let values = try? await client.history(entityID: id, hours: 6), values.count > 1 else { return }
+            histories[id] = Self.downsample(values, to: 48)
+            dataVersion &+= 1
+        }
+    }
+    func sparkline(for id: String) -> [Double]? { histories[id] }
+
+    /// Evenly thin a series to at most `n` points so the Path stays cheap.
+    private static func downsample(_ xs: [Double], to n: Int) -> [Double] {
+        guard xs.count > n, n > 1 else { return xs }
+        let step = Double(xs.count - 1) / Double(n - 1)
+        return (0..<n).map { xs[Int((Double($0) * step).rounded())] }
     }
 
     func freshness(of id: String) -> Freshness {
