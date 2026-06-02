@@ -61,7 +61,8 @@ public func groupEntities(_ entities: [EntityState], registry: Registry,
         if settings.hideOffline && !e.isAvailable { return false } // hide offline by default
         return true
     }
-    let pinnedIDs = visible.map(\.entityID).filter { settings.pinned.contains($0) }.sorted()
+    let visibleIDs = Set(visible.map(\.entityID))
+    let pinnedIDs = settings.pinned.filter { visibleIDs.contains($0) }   // keep the user's order
 
     var byArea: [String: [EntityState]] = [:]
     for e in visible where !settings.pinned.contains(e.entityID) {

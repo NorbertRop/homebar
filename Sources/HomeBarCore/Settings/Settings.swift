@@ -4,14 +4,14 @@ public struct Settings: Sendable, Codable, Equatable {
     public var serverURL: URL?
     public var stalenessWindow: TimeInterval
     public var perEntityWindow: [String: TimeInterval]
-    public var pinned: Set<String>
+    public var pinned: [String]   // ordered — the user's favorites order
     public var hidden: Set<String>
     public var notifyOffline: Bool
     public var hideOffline: Bool
     public var showDiagnostic: Bool
 
     public init(serverURL: URL? = nil, stalenessWindow: TimeInterval = 900,
-                perEntityWindow: [String: TimeInterval] = [:], pinned: Set<String> = [],
+                perEntityWindow: [String: TimeInterval] = [:], pinned: [String] = [],
                 hidden: Set<String> = [], notifyOffline: Bool = true, hideOffline: Bool = true,
                 showDiagnostic: Bool = false) {
         self.serverURL = serverURL; self.stalenessWindow = stalenessWindow
@@ -32,7 +32,7 @@ public struct Settings: Sendable, Codable, Equatable {
         serverURL = try c.decodeIfPresent(URL.self, forKey: .serverURL) ?? d.serverURL
         stalenessWindow = try c.decodeIfPresent(TimeInterval.self, forKey: .stalenessWindow) ?? d.stalenessWindow
         perEntityWindow = try c.decodeIfPresent([String: TimeInterval].self, forKey: .perEntityWindow) ?? d.perEntityWindow
-        pinned = try c.decodeIfPresent(Set<String>.self, forKey: .pinned) ?? d.pinned
+        pinned = try c.decodeIfPresent([String].self, forKey: .pinned) ?? d.pinned
         hidden = try c.decodeIfPresent(Set<String>.self, forKey: .hidden) ?? d.hidden
         notifyOffline = try c.decodeIfPresent(Bool.self, forKey: .notifyOffline) ?? d.notifyOffline
         hideOffline = try c.decodeIfPresent(Bool.self, forKey: .hideOffline) ?? d.hideOffline

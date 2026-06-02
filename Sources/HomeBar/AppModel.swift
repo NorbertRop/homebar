@@ -121,20 +121,36 @@ import Observation
         return store.entities.keys.first { $0.hasSuffix(suffix) && store.registry.deviceID(for: $0) == did }
     }
     func togglePin(_ id: String) {
-        if settings.pinned.contains(id) { settings.pinned.remove(id) }
-        else { settings.pinned.insert(id); settings.hidden.remove(id) }
+        if let i = settings.pinned.firstIndex(of: id) { settings.pinned.remove(at: i) }
+        else { settings.pinned.append(id); settings.hidden.remove(id) }
         saveSettings(); dataVersion &+= 1
     }
     func hide(_ id: String) {
-        settings.hidden.insert(id); settings.pinned.remove(id)
+        settings.hidden.insert(id); settings.pinned.removeAll { $0 == id }
         saveSettings(); dataVersion &+= 1
     }
     func hideDevice(of id: String) {
         guard let did = store.registry.deviceID(for: id) else { return hide(id) }
         for e in store.entities.keys where store.registry.deviceID(for: e) == did {
-            settings.hidden.insert(e); settings.pinned.remove(e)
+            settings.hidden.insert(e)
         }
+        settings.pinned.removeAll { store.registry.deviceID(for: $0) == did }
         saveSettings(); dataVersion &+= 1
+    }
+
+    // Favorites reordering. Move Up/Down (menu, accessible) + .onMove (Settings list).
+    func canMoveFavorite(_ id: String, up: Bool) -> Bool {
+        guard let i = settings.pinned.firstIndex(of: id) else { return false }
+        return up ? i > 0 : i < settings.pinned.count - 1
+    }
+    func moveFavorite(_ id: String, up: Bool) {
+        guard let i = settings.pinned.firstIndex(of: id) else { return }
+        let j = up ? i - 1 : i + 1
+        guard settings.pinned.indices.contains(j) else { return }
+        settings.pinned.swapAt(i, j); saveSettings(); dataVersion &+= 1
+    }
+    func moveFavorites(from: IndexSet, to: Int) {
+        settings.pinned.move(fromOffsets: from, toOffset: to); saveSettings(); dataVersion &+= 1
     }
 
     func freshness(of id: String) -> Freshness {

@@ -35,6 +35,13 @@ extension View {
         contextMenu {
             Button(model.isPinned(id) ? "Unpin" : "Pin",
                    systemImage: model.isPinned(id) ? "pin.slash" : "pin") { model.togglePin(id) }
+            if model.isPinned(id) {
+                Button("Move Up", systemImage: "arrow.up") { model.moveFavorite(id, up: true) }
+                    .disabled(!model.canMoveFavorite(id, up: true))
+                Button("Move Down", systemImage: "arrow.down") { model.moveFavorite(id, up: false) }
+                    .disabled(!model.canMoveFavorite(id, up: false))
+            }
+            Divider()
             Button("Hide", systemImage: "eye.slash") { model.hide(id) }
             if model.hasDevice(id) {
                 Button("Hide whole device", systemImage: "eye.slash.fill") { model.hideDevice(of: id) }

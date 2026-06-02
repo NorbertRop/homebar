@@ -13,6 +13,7 @@ struct SettingsView: View {
     var body: some View {
         TabView {
             connectionTab.tabItem { Label("Connection", systemImage: "network") }
+            favoritesTab.tabItem { Label("Favorites", systemImage: "star") }
             entitiesTab.tabItem { Label("Entities", systemImage: "list.bullet") }
             alertsTab.tabItem { Label("Alerts", systemImage: "bell") }
         }
@@ -74,8 +75,37 @@ struct SettingsView: View {
                     Text(s.friendlyName)
                     Text(s.entityID).font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Toggle("Pin", isOn: binding(in: \.pinned, id: s.entityID)).toggleStyle(.button)
+                    Toggle("Pin", isOn: Binding(
+                        get: { model.isPinned(s.entityID) },
+                        set: { _ in model.togglePin(s.entityID) })).toggleStyle(.button)
                     Toggle("Hide", isOn: binding(in: \.hidden, id: s.entityID)).toggleStyle(.button)
+                }
+            }
+        }.padding()
+    }
+
+    private var favoritesTab: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Drag to reorder. Favorites appear at the top of the menu, in this order.")
+                .font(.caption).foregroundStyle(.secondary)
+            if model.settings.pinned.isEmpty {
+                Spacer()
+                Text("No favorites yet.\nRight-click any entity in the menu → Pin.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
+                Spacer()
+            } else {
+                List {
+                    ForEach(model.settings.pinned, id: \.self) { id in
+                        HStack(spacing: 8) {
+                            Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
+                            Text(model.entity(id)?.friendlyName ?? id).lineLimit(1)
+                            Spacer()
+                            Button { model.togglePin(id) } label: { Image(systemName: "pin.slash") }
+                                .buttonStyle(.plain).foregroundStyle(.secondary)
+                        }
+                    }
+                    .onMove { model.moveFavorites(from: $0, to: $1) }
                 }
             }
         }.padding()
