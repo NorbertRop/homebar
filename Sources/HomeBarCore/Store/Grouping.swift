@@ -12,6 +12,17 @@ public func isUsefulDomain(_ entityID: String) -> Bool {
     usefulDomains.contains(String(entityID.split(separator: ".").first ?? ""))
 }
 
+/// Interactive domains. These are kept OUT of device cards so they can cluster as
+/// "controls", separate from the device's sensor readings.
+public let controlDomains: Set<String> = [
+    "light", "switch", "climate", "vacuum", "fan", "cover", "lock", "media_player",
+    "humidifier", "water_heater",
+]
+
+public func isControlDomain(_ entityID: String) -> Bool {
+    controlDomains.contains(String(entityID.split(separator: ".").first ?? ""))
+}
+
 public struct DeviceCard: Sendable, Equatable {
     public let deviceID: String
     public let name: String
@@ -62,7 +73,8 @@ public func groupEntities(_ entities: [EntityState], registry: Registry,
         var byDevice: [String: [EntityState]] = [:]
         var loose: [EntityState] = []
         for e in items {
-            if let did = registry.deviceID(for: e.entityID) { byDevice[did, default: []].append(e) }
+            if isControlDomain(e.entityID) { loose.append(e) }   // controls never go in a sensor card
+            else if let did = registry.deviceID(for: e.entityID) { byDevice[did, default: []].append(e) }
             else { loose.append(e) }
         }
         var cards: [DeviceCard] = []

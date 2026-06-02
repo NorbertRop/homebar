@@ -27,17 +27,14 @@ struct ClimateRow: View {
 
                 HStack(spacing: 14) {
                     if let tgt = c.targetTemperature {
-                        HStack(spacing: 6) {
-                            Button {
-                                model.perform(HACommand.setClimateTemperature(entityID, max(c.minTemp, tgt - c.targetTempStep)))
-                            } label: { Image(systemName: "minus").frame(width: 12) }
-                            Text("\(tgt, specifier: "%.0f")°").font(.title3).fontWeight(.semibold)
-                                .monospacedDigit().frame(minWidth: 36)
-                            Button {
-                                model.perform(HACommand.setClimateTemperature(entityID, min(c.maxTemp, tgt + c.targetTempStep)))
-                            } label: { Image(systemName: "plus").frame(width: 12) }
+                        HStack(spacing: 8) {
+                            Text("\(tgt, specifier: "%.0f")°").font(.title3).fontWeight(.semibold).monospacedDigit()
+                            Stepper("", value: Binding(
+                                get: { tgt },
+                                set: { model.perform(HACommand.setClimateTemperature(entityID, $0)) }
+                            ), in: c.minTemp...c.maxTemp, step: c.targetTempStep)
+                            .labelsHidden().fixedSize()
                         }
-                        .buttonStyle(.bordered).controlSize(.small)
                     }
                     if !c.fanModes.isEmpty {
                         HStack(spacing: 5) {
