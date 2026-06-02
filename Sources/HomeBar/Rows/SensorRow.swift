@@ -32,7 +32,9 @@ struct SensorRow: View {
         let plain = ISO8601DateFormatter(); plain.formatOptions = [.withInternetDateTime]
         guard let date = iso.date(from: s.state) ?? plain.date(from: s.state) else { return nil }
         let rel = RelativeDateTimeFormatter(); rel.unitsStyle = .abbreviated
-        return rel.localizedString(for: date, relativeTo: Date())
+        let relative = rel.localizedString(for: date, relativeTo: Date())
+        let clock = date.formatted(date: .omitted, time: .shortened)
+        return "\(relative) · \(clock)"
     }
 
     private func roundedNumber(_ raw: String) -> String? {
