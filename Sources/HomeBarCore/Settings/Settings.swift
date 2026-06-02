@@ -8,17 +8,20 @@ public struct Settings: Sendable, Codable, Equatable {
     public var hidden: Set<String>
     public var notifyOffline: Bool
     public var hideOffline: Bool
+    public var showDiagnostic: Bool
 
     public init(serverURL: URL? = nil, stalenessWindow: TimeInterval = 900,
                 perEntityWindow: [String: TimeInterval] = [:], pinned: Set<String> = [],
-                hidden: Set<String> = [], notifyOffline: Bool = true, hideOffline: Bool = true) {
+                hidden: Set<String> = [], notifyOffline: Bool = true, hideOffline: Bool = true,
+                showDiagnostic: Bool = false) {
         self.serverURL = serverURL; self.stalenessWindow = stalenessWindow
         self.perEntityWindow = perEntityWindow; self.pinned = pinned
         self.hidden = hidden; self.notifyOffline = notifyOffline; self.hideOffline = hideOffline
+        self.showDiagnostic = showDiagnostic
     }
 
     enum CodingKeys: String, CodingKey {
-        case serverURL, stalenessWindow, perEntityWindow, pinned, hidden, notifyOffline, hideOffline
+        case serverURL, stalenessWindow, perEntityWindow, pinned, hidden, notifyOffline, hideOffline, showDiagnostic
     }
 
     /// Forgiving decoder: missing keys fall back to defaults, so settings files
@@ -33,6 +36,7 @@ public struct Settings: Sendable, Codable, Equatable {
         hidden = try c.decodeIfPresent(Set<String>.self, forKey: .hidden) ?? d.hidden
         notifyOffline = try c.decodeIfPresent(Bool.self, forKey: .notifyOffline) ?? d.notifyOffline
         hideOffline = try c.decodeIfPresent(Bool.self, forKey: .hideOffline) ?? d.hideOffline
+        showDiagnostic = try c.decodeIfPresent(Bool.self, forKey: .showDiagnostic) ?? d.showDiagnostic
     }
 
     public static func defaultURL() -> URL {

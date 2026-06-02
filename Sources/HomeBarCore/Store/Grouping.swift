@@ -37,6 +37,7 @@ public func groupEntities(_ entities: [EntityState], registry: Registry,
         if settings.hidden.contains(e.entityID) { return false }
         if settings.pinned.contains(e.entityID) { return true }   // pinned always shows
         if !isUsefulDomain(e.entityID) { return false }           // hide noise domains
+        if !settings.showDiagnostic && registry.isDiagnostic(e.entityID) { return false } // hide diagnostic/config
         if settings.hideOffline && !e.isAvailable { return false } // hide offline by default
         return true
     }

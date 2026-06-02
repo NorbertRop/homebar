@@ -103,6 +103,9 @@ struct SettingsView: View {
             Toggle("Show offline / unavailable devices in the menu", isOn: Binding(
                 get: { !model.settings.hideOffline },
                 set: { model.settings.hideOffline = !$0; model.saveSettings() }))
+            Toggle("Show diagnostic / advanced entities", isOn: Binding(
+                get: { model.settings.showDiagnostic },
+                set: { model.settings.showDiagnostic = $0; model.saveSettings() }))
             Toggle("Notify when a device goes offline/stale", isOn: $model.settings.notifyOffline)
                 .onChange(of: model.settings.notifyOffline) { model.saveSettings() }
             HStack {

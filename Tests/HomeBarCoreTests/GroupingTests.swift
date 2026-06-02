@@ -58,3 +58,26 @@ private func states() throws -> [EntityState] {
     let g2 = groupEntities(entities, registry: try reg(), settings: pinned)
     #expect(g2.pinned == ["light.offline", "update.firmware"])  // pinning overrides both filters
 }
+
+@Test func hidesDiagnosticEntitiesUnlessShown() {
+    let registry = Registry(areas: [], devices: [], entities: [
+        EntityRegistryEntry(entityID: "sensor.uptime", entityCategory: "diagnostic"),
+        EntityRegistryEntry(entityID: "switch.auto_update", entityCategory: "config"),
+        EntityRegistryEntry(entityID: "sensor.temp", entityCategory: nil),
+    ])
+    func e(_ id: String) -> EntityState {
+        EntityState(entityID: id, state: "on", attributes: [:], lastChanged: .now, lastUpdated: .now)
+    }
+    let states = [e("sensor.uptime"), e("switch.auto_update"), e("sensor.temp")]
+
+    var s = Settings()
+    let shown = { (g: GroupedEntities) in Set(g.pinned + g.areas.flatMap { $0.looseEntityIDs } + g.unassigned.looseEntityIDs) }
+    let hidden = shown(groupEntities(states, registry: registry, settings: s))
+    #expect(hidden.contains("sensor.temp"))
+    #expect(!hidden.contains("sensor.uptime"))        // diagnostic hidden
+    #expect(!hidden.contains("switch.auto_update"))   // config hidden
+
+    s.showDiagnostic = true
+    let all = shown(groupEntities(states, registry: registry, settings: s))
+    #expect(all.contains("sensor.uptime") && all.contains("switch.auto_update"))
+}

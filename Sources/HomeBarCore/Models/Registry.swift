@@ -15,8 +15,13 @@ public struct EntityRegistryEntry: Sendable, Codable, Equatable {
     public let entityID: String
     public let deviceID: String?
     public let areaID: String?
+    public let entityCategory: String?   // "diagnostic", "config", or nil
     enum CodingKeys: String, CodingKey {
-        case entityID = "entity_id", deviceID = "device_id", areaID = "area_id"
+        case entityID = "entity_id", deviceID = "device_id", areaID = "area_id", entityCategory = "entity_category"
+    }
+    public init(entityID: String, deviceID: String? = nil, areaID: String? = nil, entityCategory: String? = nil) {
+        self.entityID = entityID; self.deviceID = deviceID; self.areaID = areaID
+        self.entityCategory = entityCategory
     }
 }
 
@@ -45,5 +50,12 @@ public struct Registry: Sendable {
             return areaNames[aid]
         }
         return nil
+    }
+
+    /// HA marks battery/signal/uptime/connectivity/config entities with an entity_category;
+    /// these are noise for a dashboard.
+    public func isDiagnostic(_ entityID: String) -> Bool {
+        let c = entities[entityID]?.entityCategory
+        return c == "diagnostic" || c == "config"
     }
 }
