@@ -1,0 +1,4 @@
+[{"entity_id":"sensor.air_temperature","device_id":"dev_air","area_id":null},
+ {"entity_id":"sensor.air_co2","device_id":"dev_air","area_id":null},
+ {"entity_id":"climate.living_room_ac","device_id":"dev_ac","area_id":null},
+ {"entity_id":"light.desk_lamp","device_id":null,"area_id":"bedroom"}]
