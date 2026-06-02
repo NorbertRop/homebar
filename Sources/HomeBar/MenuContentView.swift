@@ -4,6 +4,8 @@ import HomeBarCore
 
 struct MenuContentView: View {
     @Bindable var model: AppModel
+    @State private var search = ""
+    @FocusState private var searchFocused: Bool
 
     private var grouped: GroupedEntities {
         let nonAutomation = model.store.entities.values.filter { $0.domain != .automation }
@@ -22,20 +24,10 @@ struct MenuContentView: View {
             if !model.isConfigured {
                 onboarding
             } else {
+                searchField
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
-                        if !grouped.pinned.isEmpty { section("Pinned", ids: grouped.pinned) }
-                        ForEach(grouped.areas, id: \.name) { area in areaView(area) }
-                        if !grouped.unassigned.looseEntityIDs.isEmpty || !grouped.unassigned.deviceCards.isEmpty {
-                            areaView(grouped.unassigned)
-                        }
-                        if !automations.isEmpty {
-                            let autoIDs = ordered(automations.map(\.entityID), by: model.settings.order)
-                            VStack(alignment: .leading, spacing: 2) {
-                                sectionHeader("Automations")
-                                ForEach(autoIDs, id: \.self) { AutomationRow(model: model, entityID: $0, siblings: autoIDs) }
-                            }
-                        }
+                        if search.isEmpty { groupedContent } else { searchContent }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 2)
@@ -47,6 +39,72 @@ struct MenuContentView: View {
         }
         .padding(10)
         .frame(width: 340)
+    }
+
+    @ViewBuilder private var groupedContent: some View {
+        if !grouped.pinned.isEmpty { section("Pinned", ids: grouped.pinned) }
+        ForEach(grouped.areas, id: \.name) { area in areaView(area) }
+        if !grouped.unassigned.looseEntityIDs.isEmpty || !grouped.unassigned.deviceCards.isEmpty {
+            areaView(grouped.unassigned)
+        }
+        if !automations.isEmpty {
+            let autoIDs = ordered(automations.map(\.entityID), by: model.settings.order)
+            VStack(alignment: .leading, spacing: 2) {
+                sectionHeader("Automations")
+                ForEach(autoIDs, id: \.self) { AutomationRow(model: model, entityID: $0, siblings: autoIDs) }
+            }
+        }
+    }
+
+    @ViewBuilder private var searchContent: some View {
+        let results = visibleIDs.filter(matchesSearch)
+        if results.isEmpty {
+            Text("No matches for “\(search)”")
+                .font(.callout).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, 24)
+        } else {
+            ForEach(results, id: \.self) { id in
+                if model.entity(id)?.domain == .automation {
+                    AutomationRow(model: model, entityID: id, siblings: results)
+                } else {
+                    EntityRow(model: model, entityID: id, siblings: results)
+                }
+            }
+        }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass").font(.caption).foregroundStyle(.secondary)
+            TextField("Search", text: $search)
+                .textFieldStyle(.plain)
+                .focused($searchFocused)
+            if !search.isEmpty {
+                Button { search = "" } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain).foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 2)
+        .onAppear { searchFocused = true }
+    }
+
+    /// Every entity currently visible in the menu (respecting hide/offline/diagnostic rules), de-duped.
+    private var visibleIDs: [String] {
+        let g = grouped
+        var ids = g.pinned
+        for a in g.areas { ids += a.looseEntityIDs + a.deviceCards.flatMap(\.entityIDs) }
+        ids += g.unassigned.looseEntityIDs + g.unassigned.deviceCards.flatMap(\.entityIDs)
+        ids += automations.map(\.entityID)
+        var seen = Set<String>()
+        return ids.filter { seen.insert($0).inserted }
+    }
+
+    private func matchesSearch(_ id: String) -> Bool {
+        guard let e = model.entity(id) else { return false }
+        return e.friendlyName.localizedCaseInsensitiveContains(search)
+            || id.localizedCaseInsensitiveContains(search)
     }
 
     private var header: some View {
