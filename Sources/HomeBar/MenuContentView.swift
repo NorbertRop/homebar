@@ -35,8 +35,11 @@ struct MenuContentView: View {
                                 ForEach(automations) { AutomationRow(model: model, entityID: $0.entityID) }
                             }
                         }
-                    }.padding(.horizontal, 4)
-                }.frame(maxHeight: 460)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+                }
+                .frame(height: 380)   // definite height: a ScrollView with only maxHeight collapses to 0 in a self-sizing MenuBarExtra panel
             }
             Divider()
             footer
