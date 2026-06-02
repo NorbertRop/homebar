@@ -30,9 +30,10 @@ struct MenuContentView: View {
                             areaView(grouped.unassigned)
                         }
                         if !automations.isEmpty {
+                            let autoIDs = ordered(automations.map(\.entityID), by: model.settings.order)
                             VStack(alignment: .leading, spacing: 2) {
                                 sectionHeader("Automations")
-                                ForEach(automations) { AutomationRow(model: model, entityID: $0.entityID) }
+                                ForEach(autoIDs, id: \.self) { AutomationRow(model: model, entityID: $0, siblings: autoIDs) }
                             }
                         }
                     }
@@ -71,23 +72,23 @@ struct MenuContentView: View {
     private func section(_ title: String, ids: [String]) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             sectionHeader(title)
-            ForEach(ids, id: \.self) { EntityRow(model: model, entityID: $0) }
+            ForEach(ids, id: \.self) { EntityRow(model: model, entityID: $0, siblings: ids) }
         }
     }
 
     private func areaView(_ area: AreaSection) -> some View {
         // Controls cluster (with breathing room) → sensor device-cards → loose readings.
-        let controls = area.looseEntityIDs.filter { isControlDomain($0) }.sorted()
-        let readings = area.looseEntityIDs.filter { !isControlDomain($0) }.sorted()
+        let controls = ordered(area.looseEntityIDs.filter { isControlDomain($0) }.sorted(), by: model.settings.order)
+        let readings = ordered(area.looseEntityIDs.filter { !isControlDomain($0) }.sorted(), by: model.settings.order)
         return VStack(alignment: .leading, spacing: 6) {
             sectionHeader(area.name)
             if !controls.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
-                    ForEach(controls, id: \.self) { EntityRow(model: model, entityID: $0) }
+                    ForEach(controls, id: \.self) { EntityRow(model: model, entityID: $0, siblings: controls) }
                 }
             }
             ForEach(area.deviceCards, id: \.deviceID) { DeviceCardView(model: model, card: $0) }
-            ForEach(readings, id: \.self) { EntityRow(model: model, entityID: $0) }
+            ForEach(readings, id: \.self) { EntityRow(model: model, entityID: $0, siblings: readings) }
         }
     }
 

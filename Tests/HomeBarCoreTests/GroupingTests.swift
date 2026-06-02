@@ -99,3 +99,8 @@ private func states() throws -> [EntityState] {
     #expect(!shown.contains("light.esp_led"))           // …including its controls
     #expect(shown.contains("light.other"))              // other devices unaffected
 }
+
+@Test func customOrderPutsKnownFirstThenKeepsTheRest() {
+    #expect(ordered(["c", "a", "b", "d"], by: ["b", "a"]) == ["b", "a", "c", "d"])
+    #expect(ordered(["x", "y"], by: []) == ["x", "y"])   // no custom order → unchanged
+}

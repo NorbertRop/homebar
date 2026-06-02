@@ -31,7 +31,7 @@ extension View {
     }
 
     /// Right-click curation: pin, hide, or hide the whole device.
-    func entityContextMenu(_ model: AppModel, _ id: String) -> some View {
+    func entityContextMenu(_ model: AppModel, _ id: String, siblings: [String] = []) -> some View {
         contextMenu {
             Button(model.isPinned(id) ? "Unpin" : "Pin",
                    systemImage: model.isPinned(id) ? "pin.slash" : "pin") { model.togglePin(id) }
@@ -40,6 +40,11 @@ extension View {
                     .disabled(!model.canMoveFavorite(id, up: true))
                 Button("Move Down", systemImage: "arrow.down") { model.moveFavorite(id, up: false) }
                     .disabled(!model.canMoveFavorite(id, up: false))
+            } else if siblings.count > 1 {
+                Button("Move Up", systemImage: "arrow.up") { model.reorder(siblings, moving: id, up: true) }
+                    .disabled(siblings.first == id)
+                Button("Move Down", systemImage: "arrow.down") { model.reorder(siblings, moving: id, up: false) }
+                    .disabled(siblings.last == id)
             }
             Divider()
             Button("Hide", systemImage: "eye.slash") { model.hide(id) }

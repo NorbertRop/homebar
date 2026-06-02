@@ -23,6 +23,20 @@ public func isControlDomain(_ entityID: String) -> Bool {
     controlDomains.contains(String(entityID.split(separator: ".").first ?? ""))
 }
 
+/// Sort `ids` by a user-defined `order`: ids present in `order` come first, in that
+/// sequence; the rest keep their incoming order.
+public func ordered(_ ids: [String], by order: [String]) -> [String] {
+    let rank = Dictionary(order.enumerated().map { ($1, $0) }, uniquingKeysWith: { a, _ in a })
+    return ids.enumerated().sorted { a, b in
+        switch (rank[a.element], rank[b.element]) {
+        case let (x?, y?): return x < y
+        case (_?, nil): return true
+        case (nil, _?): return false
+        default: return a.offset < b.offset
+        }
+    }.map(\.element)
+}
+
 public struct DeviceCard: Sendable, Equatable {
     public let deviceID: String
     public let name: String

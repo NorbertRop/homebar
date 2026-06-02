@@ -4,6 +4,7 @@ import HomeBarCore
 struct AutomationRow: View {
     let model: AppModel
     let entityID: String
+    var siblings: [String] = []
     var body: some View {
         if let s = model.entity(entityID) {
             HStack {
@@ -16,7 +17,7 @@ struct AutomationRow: View {
                     .toggleStyle(.switch).labelsHidden()
             }
             .rowStyle()
-            .entityContextMenu(model, entityID)
+            .entityContextMenu(model, entityID, siblings: siblings)
         }
     }
 }

@@ -5,11 +5,12 @@ struct DeviceCardView: View {
     let model: AppModel
     let card: DeviceCard
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        let ids = ordered(card.entityIDs, by: model.settings.order)
+        return VStack(alignment: .leading, spacing: 2) {
             Text(card.name).font(.caption).fontWeight(.medium).foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
-            ForEach(card.entityIDs, id: \.self) { id in
-                EntityRow(model: model, entityID: id, nameOverride: shortName(id))
+            ForEach(ids, id: \.self) { id in
+                EntityRow(model: model, entityID: id, nameOverride: shortName(id), siblings: ids)
             }
             .padding(.leading, 10)
         }

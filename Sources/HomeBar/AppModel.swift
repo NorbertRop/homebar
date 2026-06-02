@@ -152,6 +152,15 @@ import Observation
     func moveFavorites(from: IndexSet, to: Int) {
         settings.pinned.move(fromOffsets: from, toOffset: to); saveSettings(); dataVersion &+= 1
     }
+    /// Reorder a non-pinned entity within its displayed list, recording the new order.
+    func reorder(_ displayed: [String], moving id: String, up: Bool) {
+        guard let i = displayed.firstIndex(of: id) else { return }
+        let j = up ? i - 1 : i + 1
+        guard displayed.indices.contains(j) else { return }
+        var list = displayed; list.swapAt(i, j)
+        settings.order = settings.order.filter { !list.contains($0) } + list
+        saveSettings(); dataVersion &+= 1
+    }
 
     func freshness(of id: String) -> Freshness {
         guard let s = store.entities[id] else { return .offline }

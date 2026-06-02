@@ -5,9 +5,10 @@ struct EntityRow: View {
     let model: AppModel
     let entityID: String
     var nameOverride: String? = nil
+    var siblings: [String] = []
 
     var body: some View {
-        dispatched.rowStyle().entityContextMenu(model, entityID)
+        dispatched.rowStyle().entityContextMenu(model, entityID, siblings: siblings)
     }
 
     @ViewBuilder private var dispatched: some View {
