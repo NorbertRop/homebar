@@ -33,9 +33,18 @@ public struct GroupedEntities: Sendable, Equatable {
 /// `entities` should exclude automations (the UI lists those separately).
 public func groupEntities(_ entities: [EntityState], registry: Registry,
                           settings: Settings) -> GroupedEntities {
+    // Devices whose connectivity sensor reports disconnected are dead weight — their
+    // controls won't respond — so hide the whole device while offline-hiding is on.
+    let disconnectedDevices: Set<String> = settings.hideOffline
+        ? Set(entities
+            .filter { $0.deviceClass == "connectivity" && $0.state == "off" }
+            .compactMap { registry.deviceID(for: $0.entityID) })
+        : []
+
     let visible = entities.filter { e in
         if settings.hidden.contains(e.entityID) { return false }
         if settings.pinned.contains(e.entityID) { return true }   // pinned always shows
+        if let did = registry.deviceID(for: e.entityID), disconnectedDevices.contains(did) { return false }
         if !isUsefulDomain(e.entityID) { return false }           // hide noise domains
         if !settings.showDiagnostic && registry.isDiagnostic(e.entityID) { return false } // hide diagnostic/config
         if settings.hideOffline && !e.isAvailable { return false } // hide offline by default

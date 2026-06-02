@@ -81,3 +81,21 @@ private func states() throws -> [EntityState] {
     let all = shown(groupEntities(states, registry: registry, settings: s))
     #expect(all.contains("sensor.uptime") && all.contains("switch.auto_update"))
 }
+
+@Test func hidesWholeDeviceWhenConnectivityDisconnected() {
+    let registry = Registry(areas: [], devices: [], entities: [
+        EntityRegistryEntry(entityID: "binary_sensor.esp_conn", deviceID: "esp"),
+        EntityRegistryEntry(entityID: "light.esp_led", deviceID: "esp"),
+        EntityRegistryEntry(entityID: "light.other", deviceID: "other"),
+    ])
+    func e(_ id: String, _ state: String, dc: String? = nil) -> EntityState {
+        var a: [String: JSONValue] = [:]; if let dc { a["device_class"] = .string(dc) }
+        return EntityState(entityID: id, state: state, attributes: a, lastChanged: .now, lastUpdated: .now)
+    }
+    let states = [e("binary_sensor.esp_conn", "off", dc: "connectivity"), e("light.esp_led", "off"), e("light.other", "on")]
+    let g = groupEntities(states, registry: registry, settings: Settings())
+    let shown = Set(g.pinned + g.areas.flatMap { $0.looseEntityIDs } + g.unassigned.looseEntityIDs)
+    #expect(!shown.contains("binary_sensor.esp_conn"))  // disconnected device hidden…
+    #expect(!shown.contains("light.esp_led"))           // …including its controls
+    #expect(shown.contains("light.other"))              // other devices unaffected
+}
