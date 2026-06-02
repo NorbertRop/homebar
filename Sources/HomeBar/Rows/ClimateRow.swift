@@ -4,45 +4,50 @@ import HomeBarCore
 struct ClimateRow: View {
     let model: AppModel
     let entityID: String
-
-    private func tempSummary(current: Double?, target: Double) -> String {
-        if let cur = current { return String(format: "%.0f°→%.0f°", cur, target) }
-        return String(format: "→%.0f°", target)
-    }
+    var nameOverride: String? = nil
 
     var body: some View {
         if let s = model.entity(entityID) {
             let c = ClimateState(from: s)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
                     Image(systemName: "snowflake").frame(width: 18)
                         .foregroundStyle(c.hvacMode == "off" ? Color.secondary : Color.blue)
-                    Text(s.friendlyName)
-                    Spacer()
-                    if let tgt = c.targetTemperature {
-                        Text(tempSummary(current: c.currentTemperature, target: tgt))
-                            .foregroundStyle(.secondary).monospacedDigit()
+                    Text(nameOverride ?? s.friendlyName).lineLimit(1)
+                    if let cur = c.currentTemperature {
+                        Text("· \(cur, specifier: "%.0f")°").foregroundStyle(.secondary).monospacedDigit()
                     }
-                }
-                HStack {
+                    Spacer()
                     Picker("", selection: Binding(get: { c.hvacMode },
                         set: { model.perform(HACommand.setClimateMode(entityID, $0)) })) {
-                        ForEach(c.hvacModes, id: \.self) { Text($0).tag($0) }
-                    }.labelsHidden().frame(width: 90)
+                        ForEach(c.hvacModes, id: \.self) { Text($0.capitalized).tag($0) }
+                    }
+                    .labelsHidden().fixedSize()
+                }
 
-                    if let tgt = c.targetTemperature {
-                        Stepper("\(tgt, specifier: "%.0f")°", onIncrement: {
-                            model.perform(HACommand.setClimateTemperature(entityID, min(c.maxTemp, tgt + c.targetTempStep)))
-                        }, onDecrement: {
+                if let tgt = c.targetTemperature {
+                    HStack(spacing: 10) {
+                        Button {
                             model.perform(HACommand.setClimateTemperature(entityID, max(c.minTemp, tgt - c.targetTempStep)))
-                        })
+                        } label: { Image(systemName: "minus.circle.fill").font(.title3) }
+                        Text("\(tgt, specifier: "%.0f")°").font(.title3.weight(.medium)).monospacedDigit().frame(minWidth: 42)
+                        Button {
+                            model.perform(HACommand.setClimateTemperature(entityID, min(c.maxTemp, tgt + c.targetTempStep)))
+                        } label: { Image(systemName: "plus.circle.fill").font(.title3) }
+
+                        Spacer()
+
+                        if !c.fanModes.isEmpty {
+                            Image(systemName: "fan").foregroundStyle(.secondary)
+                            Picker("", selection: Binding(get: { c.fanMode ?? "" },
+                                set: { model.perform(HACommand.setClimateFan(entityID, $0)) })) {
+                                ForEach(c.fanModes, id: \.self) { Text($0).tag($0) }
+                            }
+                            .labelsHidden().fixedSize()
+                        }
                     }
-                    if !c.fanModes.isEmpty {
-                        Picker("Fan", selection: Binding(get: { c.fanMode ?? "" },
-                            set: { model.perform(HACommand.setClimateFan(entityID, $0)) })) {
-                            ForEach(c.fanModes, id: \.self) { Text($0).tag($0) }
-                        }.frame(width: 110)
-                    }
+                    .buttonStyle(.plain)
+                    .tint(.accentColor)
                 }
             }
         }
