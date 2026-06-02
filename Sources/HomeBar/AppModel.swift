@@ -8,6 +8,10 @@ import Observation
     var connection: HAClient.ConnectionState = .disconnected
     var offlineEntityIDs: Set<String> = []
     var offlineCount: Int { offlineEntityIDs.count }
+    /// Bumped on every snapshot/delta. A direct observable property the menu reads so it
+    /// re-renders on data changes — MenuBarExtra content doesn't reliably track the nested
+    /// @Observable `store.entities`.
+    var dataVersion = 0
 
     let tokenStore: TokenStore
     private let notifier: UserNotificationNotifier
@@ -67,7 +71,8 @@ import Observation
                 connection = .authenticated
                 attempt = 0
                 store.registry = (try? await client.fetchRegistry()) ?? store.registry
-                store.applySnapshot(try await client.getStates())
+                let snapshot = try await client.getStates()
+                if !snapshot.isEmpty { store.applySnapshot(snapshot); dataVersion &+= 1 }
                 try? store.saveCache(to: Self.cacheURL)
                 evaluateStaleness()
                 try await client.subscribeStateChanges()
@@ -79,6 +84,7 @@ import Observation
                 }
                 for await change in client.events {
                     store.apply(change)
+                    dataVersion &+= 1
                     try? store.saveCache(to: Self.cacheURL)
                     evaluateStaleness()
                 }

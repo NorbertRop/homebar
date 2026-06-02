@@ -15,6 +15,7 @@ struct MenuContentView: View {
     }
 
     var body: some View {
+        let _ = model.dataVersion   // re-render when entity data changes (see AppModel.dataVersion)
         VStack(alignment: .leading, spacing: 6) {
             header
             Divider()
