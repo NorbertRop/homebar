@@ -20,11 +20,10 @@ struct LightRow: View {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
                             if let b = light.brightnessPercent {
-                                Slider(value: Binding(
-                                    get: { Double(b) },
-                                    set: { v in model.perform(HACommand.setLight(entityID, on: true,
-                                        brightnessPercent: Int(v), rgb: nil, colorTempKelvin: nil)) }
-                                ), in: 1...100)
+                                HASlider(value: Double(b), in: 1...100) { v in
+                                    model.perform(HACommand.setLight(entityID, on: true,
+                                        brightnessPercent: Int(v), rgb: nil, colorTempKelvin: nil))
+                                }
                             }
                             if light.supportsColor {
                                 ColorPicker("", selection: Binding(
@@ -43,11 +42,11 @@ struct LightRow: View {
                             let maxK = light.maxColorTempKelvin ?? 6500
                             HStack(spacing: 4) {
                                 Image(systemName: "thermometer.sun").font(.caption2).foregroundStyle(.orange)
-                                Slider(value: Binding(
-                                    get: { Double(light.colorTempKelvin ?? minK) },
-                                    set: { k in model.perform(HACommand.setLight(entityID, on: true,
-                                        brightnessPercent: light.brightnessPercent, rgb: nil, colorTempKelvin: Int(k))) }
-                                ), in: Double(minK)...Double(maxK))
+                                HASlider(value: Double(light.colorTempKelvin ?? minK),
+                                         in: Double(minK)...Double(maxK)) { k in
+                                    model.perform(HACommand.setLight(entityID, on: true,
+                                        brightnessPercent: light.brightnessPercent, rgb: nil, colorTempKelvin: Int(k)))
+                                }
                                 Image(systemName: "thermometer.snowflake").font(.caption2).foregroundStyle(.blue)
                             }
                         }
