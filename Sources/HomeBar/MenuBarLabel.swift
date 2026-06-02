@@ -1,12 +1,13 @@
 import SwiftUI
 
 struct MenuBarLabel: View {
-    let offlineCount: Int
-    let connected: Bool
+    let model: AppModel?
 
     var body: some View {
-        Image(systemName: offlineCount > 0 ? "house.fill" : "house")
+        let offline = model?.offlineCount ?? 0
+        let connected = model?.connection == .authenticated
+        Image(systemName: offline > 0 ? "house.fill" : "house")
             .symbolRenderingMode(.palette)
-            .foregroundStyle(offlineCount > 0 ? .red : (connected ? .primary : .secondary))
+            .foregroundStyle(offline > 0 ? .red : (connected ? .primary : .secondary))
     }
 }

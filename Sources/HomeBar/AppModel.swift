@@ -28,7 +28,17 @@ import Observation
         store.loadCache(from: Self.cacheURL)
     }
 
-    var isConfigured: Bool { settings.serverURL != nil && tokenStore.read() != nil }
+    /// URL/token resolve from env vars first (handy for headless testing/automation),
+    /// then the saved settings + Keychain.
+    private var effectiveURL: URL? {
+        if let s = ProcessInfo.processInfo.environment["HOMEBAR_URL"], let u = URL(string: s) { return u }
+        return settings.serverURL
+    }
+    private var effectiveToken: String? {
+        ProcessInfo.processInfo.environment["HOMEBAR_TOKEN"] ?? tokenStore.read()
+    }
+
+    var isConfigured: Bool { effectiveURL != nil && effectiveToken != nil }
 
     func start() {
         guard connectTask == nil, isConfigured else { return }
@@ -46,7 +56,7 @@ import Observation
     }
 
     private func connectLoop() async {
-        guard let base = settings.serverURL, let token = tokenStore.read(),
+        guard let base = effectiveURL, let token = effectiveToken,
               let ws = haWebSocketURL(from: base) else { return }
         var attempt = 0
         while !Task.isCancelled {
@@ -73,7 +83,7 @@ import Observation
                     evaluateStaleness()
                 }
                 ticker.cancel()
-            } catch { /* fall through to reconnect */ }
+            } catch { /* connection failed — retry with backoff below */ }
             await client.disconnect()
             connection = .disconnected
             attempt += 1
