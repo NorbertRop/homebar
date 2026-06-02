@@ -14,7 +14,11 @@ let package = Package(
     ],
     targets: [
         .target(name: "HomeBarCore"),
-        .testTarget(name: "HomeBarCoreTests", dependencies: ["HomeBarCore"]),
+        .testTarget(
+            name: "HomeBarCoreTests",
+            dependencies: ["HomeBarCore"],
+            resources: [.copy("Fixtures")]
+        ),
         .executableTarget(name: "HomeBar", dependencies: ["HomeBarCore"]),
         .executableTarget(
             name: "homebarcli",

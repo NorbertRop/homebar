@@ -1,0 +1,8 @@
+[
+  {"entity_id":"sensor.air_temperature","state":"21.5","attributes":{"unit_of_measurement":"°C","device_class":"temperature","friendly_name":"Air Temperature"},"last_changed":"2026-06-02T10:11:12.000000+00:00","last_updated":"2026-06-02T10:11:12.000000+00:00"},
+  {"entity_id":"sensor.air_co2","state":"640","attributes":{"unit_of_measurement":"ppm","device_class":"carbon_dioxide","friendly_name":"Air CO2"},"last_changed":"2026-06-02T10:11:12.000000+00:00","last_updated":"2026-06-02T10:11:12.000000+00:00"},
+  {"entity_id":"light.desk_lamp","state":"on","attributes":{"brightness":204,"color_mode":"rgb","rgb_color":[255,128,0],"supported_color_modes":["rgb","color_temp"],"min_color_temp_kelvin":2000,"max_color_temp_kelvin":6500,"friendly_name":"Desk Lamp"},"last_changed":"2026-06-02T10:00:00.000000+00:00","last_updated":"2026-06-02T10:00:00.000000+00:00"},
+  {"entity_id":"climate.living_room_ac","state":"cool","attributes":{"current_temperature":22.0,"temperature":24.0,"min_temp":16.0,"max_temp":30.0,"target_temp_step":1.0,"hvac_modes":["off","cool","heat","auto","dry","fan_only"],"fan_mode":"auto","fan_modes":["auto","low","high"],"friendly_name":"Living Room A/C"},"last_changed":"2026-06-02T09:00:00.000000+00:00","last_updated":"2026-06-02T09:00:00.000000+00:00"},
+  {"entity_id":"automation.morning","state":"on","attributes":{"last_triggered":"2026-06-02T06:00:00.000000+00:00","friendly_name":"Morning routine"},"last_changed":"2026-06-02T06:00:00.000000+00:00","last_updated":"2026-06-02T06:00:00.000000+00:00"},
+  {"entity_id":"binary_sensor.balcony_door","state":"off","attributes":{"device_class":"door","friendly_name":"Balcony Door"},"last_changed":"2026-06-02T08:00:00.000000+00:00","last_updated":"2026-06-02T08:00:00.000000+00:00"}
+]
