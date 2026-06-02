@@ -114,6 +114,12 @@ import Observation
     // Curation from the menu's right-click context menu.
     func isPinned(_ id: String) -> Bool { settings.pinned.contains(id) }
     func hasDevice(_ id: String) -> Bool { store.registry.deviceID(for: id) != nil }
+    /// Find a sibling entity on the same device whose id ends with `suffix`
+    /// (e.g. a vacuum's `button.…_start_sweep_mop`).
+    func deviceEntityID(of id: String, suffix: String) -> String? {
+        guard let did = store.registry.deviceID(for: id) else { return nil }
+        return store.entities.keys.first { $0.hasSuffix(suffix) && store.registry.deviceID(for: $0) == did }
+    }
     func togglePin(_ id: String) {
         if settings.pinned.contains(id) { settings.pinned.remove(id) }
         else { settings.pinned.insert(id); settings.hidden.remove(id) }
