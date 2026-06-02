@@ -6,34 +6,25 @@ struct HomeBarApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            if let model = delegate.model {
-                MenuContentView(model: model)
-            } else {
-                Text("Starting…").padding()
-            }
+            MenuContentView(model: delegate.model)
         } label: {
             MenuBarLabel(model: delegate.model)
         }
         .menuBarExtraStyle(.window)
 
         Settings {
-            if let model = delegate.model {
-                SettingsView(model: model)
-            }
+            SettingsView(model: delegate.model)
         }
     }
 }
 
-/// Owns the AppModel and starts the HA connection at launch — a MenuBarExtra's
-/// `@State` content is created lazily on first open, so background work must be
-/// kicked off here instead.
+/// Owns the AppModel (created eagerly so the menu never shows a "starting" placeholder)
+/// and kicks off the HA connection once the app finishes launching.
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
-    @Published private(set) var model: AppModel?
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let m = AppModel()
-        model = m
-        m.start()
+        model.start()
     }
 }
