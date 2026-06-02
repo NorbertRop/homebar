@@ -19,7 +19,7 @@ let package = Package(
             dependencies: ["HomeBarCore"],
             resources: [.copy("Fixtures")]
         ),
-        .executableTarget(name: "HomeBar", dependencies: ["HomeBarCore"]),
+        .executableTarget(name: "HomeBar", dependencies: ["HomeBarCore"], exclude: ["Info.plist"]),
         .executableTarget(
             name: "homebarcli",
             dependencies: [

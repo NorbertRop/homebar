@@ -32,7 +32,7 @@ struct LightRow: View {
                                 set: { c in
                                     let rgb = c.toRGB()
                                     model.perform(HACommand.setLight(entityID, on: true,
-                                        brightnessPercent: nil, rgb: rgb, colorTempKelvin: nil))
+                                        brightnessPercent: light.brightnessPercent, rgb: rgb, colorTempKelvin: nil))
                                 }
                             )).labelsHidden().frame(width: 28)
                         }
