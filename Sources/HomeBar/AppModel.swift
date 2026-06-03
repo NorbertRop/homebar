@@ -15,6 +15,9 @@ import Observation
     /// Cached ~6h sparkline samples per sensor, populated lazily when a row appears.
     var histories: [String: [Double]] = [:]
     private var historyFetchedAt: [String: Date] = [:]
+    /// Cached ~24h timestamped history for the expanded sensor detail chart.
+    var detailHistory: [String: [HistoryPoint]] = [:]
+    private var detailFetchedAt: [String: Date] = [:]
 
     let tokenStore: TokenStore
     private let notifier: UserNotificationNotifier
@@ -171,15 +174,28 @@ import Observation
         guard let client else { return }
         historyFetchedAt[id] = Date()
         Task {
-            guard let values = try? await client.history(entityID: id, hours: 6), values.count > 1 else { return }
-            histories[id] = Self.downsample(values, to: 48)
+            guard let pts = try? await client.history(entityID: id, hours: 6), pts.count > 1 else { return }
+            histories[id] = Self.downsample(pts.map(\.value), to: 48)
             dataVersion &+= 1
         }
     }
     func sparkline(for id: String) -> [Double]? { histories[id] }
 
-    /// Evenly thin a series to at most `n` points so the Path stays cheap.
-    private static func downsample(_ xs: [Double], to n: Int) -> [Double] {
+    /// Fetch ~24h of timestamped history for the expanded detail chart (cached ~2 min).
+    func loadDetail(_ id: String) {
+        if let t = detailFetchedAt[id], Date().timeIntervalSince(t) < 120 { return }
+        guard let client else { return }
+        detailFetchedAt[id] = Date()
+        Task {
+            guard let pts = try? await client.history(entityID: id, hours: 24), pts.count > 1 else { return }
+            detailHistory[id] = Self.downsample(pts, to: 240)
+            dataVersion &+= 1
+        }
+    }
+    func detail(for id: String) -> [HistoryPoint]? { detailHistory[id] }
+
+    /// Evenly thin a series to at most `n` points so the chart stays cheap.
+    private static func downsample<T>(_ xs: [T], to n: Int) -> [T] {
         guard xs.count > n, n > 1 else { return xs }
         let step = Double(xs.count - 1) / Double(n - 1)
         return (0..<n).map { xs[Int((Double($0) * step).rounded())] }

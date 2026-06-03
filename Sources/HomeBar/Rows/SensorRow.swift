@@ -5,19 +5,37 @@ struct SensorRow: View {
     let model: AppModel
     let entityID: String
     var nameOverride: String? = nil
+    @State private var expanded = false
 
     var body: some View {
         if let s = model.entity(entityID) {
-            HStack {
-                Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
-                Text(nameOverride ?? s.friendlyName).lineLimit(1)
-                Spacer()
-                if let pts = model.sparkline(for: entityID), pts.count > 1 {
-                    Sparkline(values: pts).frame(width: 42, height: 14).foregroundStyle(.tertiary)
+            let numeric = Double(s.state) != nil
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
+                    Text(nameOverride ?? s.friendlyName).lineLimit(1)
+                    Spacer()
+                    if let pts = model.sparkline(for: entityID), pts.count > 1 {
+                        Sparkline(values: pts, fill: true, dot: true)
+                            .frame(width: 46, height: 16).foregroundStyle(.secondary)
+                    }
+                    Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
+                    if numeric {
+                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                            .rotationEffect(.degrees(expanded ? 90 : 0))
+                    }
                 }
-                Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard numeric else { return }
+                    withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+                    if expanded { model.loadDetail(entityID) }
+                }
+                if expanded, numeric {
+                    SensorDetailView(model: model, entityID: entityID)
+                }
             }
-            .onAppear { if Double(s.state) != nil { model.loadHistory(entityID) } }
+            .onAppear { if numeric { model.loadHistory(entityID) } }
         }
     }
 

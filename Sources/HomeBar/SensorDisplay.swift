@@ -20,16 +20,19 @@ func sensorSymbol(_ deviceClass: String?) -> String {
     }
 }
 
+/// Compact numeric formatting shared by the menu-bar label and the sensor detail stats:
+/// "21°", "47%", "612 ppm".
+func compactValue(_ v: Double, unit: String?) -> String {
+    let n = v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v)
+    guard let u = unit else { return n }
+    switch u {
+    case "°C", "°F": return "\(n)°"
+    case "%": return "\(n)%"
+    default: return "\(n) \(u)"
+    }
+}
+
 extension EntityState {
     /// A compact value suited to the menu bar: "21°", "47%", "612 ppm".
-    var menuBarValue: String {
-        guard let d = Double(state) else { return state.capitalized }
-        let n = d == d.rounded() ? String(Int(d)) : String(format: "%.1f", d)
-        guard let u = unit else { return n }
-        switch u {
-        case "°C", "°F": return "\(n)°"
-        case "%": return "\(n)%"
-        default: return "\(n) \(u)"
-        }
-    }
+    var menuBarValue: String { Double(state).map { compactValue($0, unit: unit) } ?? state.capitalized }
 }

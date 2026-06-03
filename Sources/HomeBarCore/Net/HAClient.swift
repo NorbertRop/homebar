@@ -5,6 +5,12 @@ public struct StateChange: Sendable, Equatable {
     public let newState: EntityState?
 }
 
+public struct HistoryPoint: Sendable, Equatable {
+    public let date: Date
+    public let value: Double
+    public init(date: Date, value: Double) { self.date = date; self.value = value }
+}
+
 public actor HAClient {
     public enum ConnectionState: Sendable, Equatable {
         case disconnected, connecting, authenticated, failed(String)
@@ -77,7 +83,7 @@ public actor HAClient {
     }
 
     /// Numeric history samples for one entity over the last `hours`, oldest→newest.
-    public func history(entityID: String, hours: Double) async throws -> [Double] {
+    public func history(entityID: String, hours: Double) async throws -> [HistoryPoint] {
         let end = Date(), start = end.addingTimeInterval(-hours * 3600)
         let id = nextID; nextID += 1
         let frame = historyFrame(id: id, entityID: entityID, start: start, end: end)
@@ -87,7 +93,9 @@ public actor HAClient {
         }
         guard let arr = result[entityID]?.arrayValue else { return [] }
         return arr.compactMap { item in
-            (item["s"] ?? item["state"])?.coercedString.flatMap(Double.init)
+            guard let v = (item["s"] ?? item["state"])?.coercedString.flatMap(Double.init) else { return nil }
+            let ts = (item["lu"] ?? item["lc"])?.doubleValue
+            return HistoryPoint(date: ts.map { Date(timeIntervalSince1970: $0) } ?? end, value: v)
         }
     }
 
