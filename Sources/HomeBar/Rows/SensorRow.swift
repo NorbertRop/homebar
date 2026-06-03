@@ -29,17 +29,29 @@ struct SensorRow: View {
     }
 
     private func header(_ s: EntityState, expandable: Bool) -> some View {
-        HStack(spacing: 8) {
+        let value = displayValue(s)
+        // A long, non-numeric value (e.g. a status message) reads as a subtitle under the name
+        // instead of squeezing the name to fit a full-width right-aligned sentence.
+        let longText = Double(s.state) == nil && s.deviceClass != "timestamp" && value.count > 18
+        return HStack(alignment: longText ? .top : .center, spacing: 8) {
             Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
-            Text(nameOverride ?? s.friendlyName).lineLimit(1).truncationMode(.tail)
-            Spacer(minLength: 6)
-            if let pts = model.sparkline(for: entityID), pts.count > 1 {
-                Sparkline(values: pts, fill: true, dot: true)
-                    .frame(width: 40, height: 16).foregroundStyle(chartTint)
+            if longText {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(nameOverride ?? s.friendlyName).lineLimit(1)
+                    Text(value).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                }
+                Spacer(minLength: 0)
+            } else {
+                Text(nameOverride ?? s.friendlyName).lineLimit(1).truncationMode(.tail)
+                Spacer(minLength: 6)
+                if let pts = model.sparkline(for: entityID), pts.count > 1 {
+                    Sparkline(values: pts, fill: true, dot: true)
+                        .frame(width: 40, height: 16).foregroundStyle(chartTint)
+                }
+                // Value keeps full width; the name truncates instead so digits never get cramped.
+                Text(value).foregroundStyle(.secondary).monospacedDigit()
+                    .lineLimit(1).fixedSize(horizontal: true, vertical: false)
             }
-            // Value keeps its full width; the name truncates instead so digits never get cramped.
-            Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit()
-                .lineLimit(1).fixedSize(horizontal: true, vertical: false)
             if expandable {
                 Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                     .rotationEffect(.degrees(expanded ? 90 : 0))
