@@ -143,7 +143,7 @@ struct SettingsView: View {
             .padding(7).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
             .padding(.horizontal, 16).padding(.vertical, 10)
             List(filteredEntities, id: \.entityID) { entityRow($0, disconnected: disconnected) }
-            Text("Hidden entities are filtered from the menu — Pin one to force it back.")
+            Text("Auto-hidden items (offline, diagnostic, …) show Hide on — click Hide to reveal one.")
                 .font(.caption2).foregroundStyle(.tertiary)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16).padding(.vertical, 7)
@@ -158,7 +158,8 @@ struct SettingsView: View {
                 Text(s.friendlyName).lineLimit(1)
                 Text(s.entityID).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
-            if case .hidden(let reason) = vis {
+            // Why it's auto-hidden (a manual hide is already conveyed by the Hide button being on).
+            if case .hidden(let reason) = vis, reason != .manual {
                 let warn = reason == .offline || reason == .deviceOffline
                 Text(reason.label).font(.caption2).fontWeight(.medium)
                     .padding(.horizontal, 6).padding(.vertical, 2)
@@ -169,9 +170,34 @@ struct SettingsView: View {
             Toggle("Pin", isOn: Binding(get: { model.isPinned(s.entityID) },
                                         set: { _ in model.togglePin(s.entityID) }))
                 .toggleStyle(.button).controlSize(.small)
-            Toggle("Hide", isOn: binding(in: \.hidden, id: s.entityID))
+            Toggle("Hide", isOn: hideBinding(s, disconnected))
                 .toggleStyle(.button).controlSize(.small)
         }
+    }
+
+    /// Hide reflects whether the entity is *effectively* hidden from the menu (auto rules included);
+    /// turning it off force-shows an auto-hidden entity.
+    private func hideBinding(_ s: EntityState, _ disconnected: Set<String>) -> Binding<Bool> {
+        let id = s.entityID
+        return Binding(
+            get: {
+                entityVisibility(s, registry: model.store.registry, settings: model.settings,
+                                 disconnectedDevices: disconnected) != .shown
+            },
+            set: { hide in
+                if hide {
+                    model.settings.shown.remove(id)
+                    model.settings.pinned.removeAll { $0 == id }
+                    model.settings.hidden.insert(id)
+                } else {
+                    model.settings.hidden.remove(id)
+                    model.settings.shown.remove(id)
+                    let stillHidden = entityVisibility(s, registry: model.store.registry, settings: model.settings,
+                                                       disconnectedDevices: disconnected) != .shown
+                    if stillHidden { model.settings.shown.insert(id) }   // still hidden by a rule → force-show
+                }
+                model.saveSettings(); model.dataVersion &+= 1
+            })
     }
 
     // MARK: - Alerts
@@ -240,15 +266,6 @@ struct SettingsView: View {
             .sorted { $0.entityID < $1.entityID }
     }
 
-    private func binding(in keyPath: WritableKeyPath<HomeBarCore.Settings, Set<String>>, id: String) -> Binding<Bool> {
-        Binding(
-            get: { model.settings[keyPath: keyPath].contains(id) },
-            set: { on in
-                if on { model.settings[keyPath: keyPath].insert(id) }
-                else { model.settings[keyPath: keyPath].remove(id) }
-                model.saveSettings()
-            })
-    }
 
     private enum Tab: String, CaseIterable, Identifiable {
         case connection, pinned, entities, alerts

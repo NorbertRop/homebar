@@ -90,6 +90,7 @@ public func entityVisibility(_ entity: EntityState, registry: Registry, settings
                              disconnectedDevices: Set<String>) -> EntityVisibility {
     if settings.hidden.contains(entity.entityID) { return .hidden(.manual) }
     if settings.pinned.contains(entity.entityID) { return .shown }   // pinned always shows
+    if settings.shown.contains(entity.entityID) { return .shown }    // user force-showed it
     if let did = registry.deviceID(for: entity.entityID), disconnectedDevices.contains(did) { return .hidden(.deviceOffline) }
     if !isUsefulDomain(entity.entityID) { return .hidden(.domain) }                          // noise domains
     if !settings.showDiagnostic && registry.isDiagnostic(entity.entityID) { return .hidden(.diagnostic) }

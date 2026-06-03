@@ -125,4 +125,6 @@ private func states() throws -> [EntityState] {
     // Pinned entity on a disconnected device still shows (pin wins over device-offline).
     #expect(entityVisibility(e("sensor.dead"), registry: registry, settings: s,
                              disconnectedDevices: ["dev1"]) == .shown)
+    s.shown = ["sensor.uptime"]
+    #expect(vis("sensor.uptime") == .shown)   // force-show overrides the diagnostic rule
 }
