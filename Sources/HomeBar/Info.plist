@@ -18,7 +18,11 @@
        is public (or appcast.xml is hosted somewhere Sparkle can GET it). -->
   <key>SUFeedURL</key><string>https://raw.githubusercontent.com/NorbertRop/homebar/main/appcast.xml</string>
   <key>SUPublicEDKey</key><string>eNbyK6iFySOb8ED2BCmc8JjVK+kLU1bp9Z/alURvvX0=</string>
-  <key>SUEnableAutomaticChecks</key><true/>
+  <!-- Automatic checks are OFF while builds are un-notarized: on modern macOS,
+       Gatekeeper blocks/warns on un-notarized updates, so we don't want the app
+       auto-offering one. The manual "Check for Updates" still works. Flip this to
+       <true/> once releases are Developer-ID signed + notarized. -->
+  <key>SUEnableAutomaticChecks</key><false/>
   <key>SUScheduledCheckInterval</key><integer>86400</integer>
   <!-- Home Assistant is typically self-hosted over plain http/ws on a LAN or VPN,
        so allow insecure loads. -->
