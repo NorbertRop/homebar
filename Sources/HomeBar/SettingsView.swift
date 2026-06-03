@@ -13,24 +13,25 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
                 ForEach(Tab.allCases) { t in
                     Button { tab = t } label: {
-                        VStack(spacing: 3) {
-                            Image(systemName: t.icon).font(.system(size: 17))
+                        VStack(spacing: 4) {
+                            Image(systemName: t.icon).font(.system(size: 18)).frame(height: 20)
                             Text(t.title).font(.caption)
                         }
-                        .frame(width: 68, height: 46)
+                        .frame(width: 74, height: 50)
                         .foregroundStyle(tab == t ? Color.accentColor : Color.secondary)
                         .background(tab == t ? Color.accentColor.opacity(0.12) : Color.clear,
-                                    in: RoundedRectangle(cornerRadius: 7))
+                                    in: RoundedRectangle(cornerRadius: 8))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 6)
+            .padding(.vertical, 8)
             Divider()
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
@@ -45,72 +46,157 @@ struct SettingsView: View {
     @ViewBuilder private var content: some View {
         switch tab {
         case .connection: connectionTab
-        case .favorites: favoritesTab
+        case .pinned: pinnedTab
         case .entities: entitiesTab
         case .alerts: alertsTab
         }
     }
 
-    private enum Tab: String, CaseIterable, Identifiable {
-        case connection, favorites, entities, alerts
-        var id: Self { self }
-        var title: String {
-            switch self {
-            case .connection: "Connection"
-            case .favorites: "Favorites"
-            case .entities: "Entities"
-            case .alerts: "Alerts"
-            }
-        }
-        var icon: String {
-            switch self {
-            case .connection: "network"
-            case .favorites: "star"
-            case .entities: "list.bullet"
-            case .alerts: "bell"
-            }
-        }
-    }
+    // MARK: - Connection
 
     private var connectionTab: some View {
         Form {
-            TextField("Server URL", text: $urlString, prompt: Text("http://homeassistant.local:8123"))
-            SecureField("Long-lived token", text: $token)
-            HStack {
-                Button("Test connection") { Task { await test() } }
-                Text(testResult).font(.caption).foregroundStyle(.secondary)
-            }
-            Button("Save") {
-                model.settings.serverURL = URL(string: urlString)
-                try? model.tokenStore.write(token)
-                model.saveSettings()
-                model.restart()
-            }.keyboardShortcut(.defaultAction)
-
-            Toggle("Launch at login", isOn: Binding(
-                get: { launchAtLogin },
-                set: { on in
-                    do {
-                        if on { try SMAppService.mainApp.register() }
-                        else { try SMAppService.mainApp.unregister() }
-                        launchAtLogin = on
-                    } catch {
-                        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+            Section("Home Assistant") {
+                TextField("Server URL", text: $urlString, prompt: Text("http://homeassistant.local:8123"))
+                SecureField("Long-lived token", text: $token)
+                HStack {
+                    Button("Test Connection") { Task { await test() } }
+                    if !testResult.isEmpty {
+                        Text(testResult).font(.caption).lineLimit(1)
+                            .foregroundStyle(testResult.hasPrefix("OK") ? Color.green : Color.secondary)
                     }
-                }))
-
-            Picker("Menu bar shows", selection: Binding(
-                get: { model.settings.menuBarEntityID },
-                set: { model.settings.menuBarEntityID = $0; model.saveSettings() })) {
-                Text("Icon only").tag(String?.none)
-                ForEach(menuBarCandidates, id: \.entityID) { s in
-                    Text(s.friendlyName).tag(String?.some(s.entityID))
+                    Spacer()
+                    Button("Save") {
+                        model.settings.serverURL = URL(string: urlString)
+                        try? model.tokenStore.write(token)
+                        model.saveSettings()
+                        model.restart()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .buttonStyle(.borderedProminent)
                 }
             }
-        }.padding()
+            Section("Menu Bar") {
+                Picker("Show", selection: Binding(
+                    get: { model.settings.menuBarEntityID },
+                    set: { model.settings.menuBarEntityID = $0; model.saveSettings() })) {
+                    Text("Icon only").tag(String?.none)
+                    ForEach(menuBarCandidates, id: \.entityID) { s in
+                        Text(s.friendlyName).tag(String?.some(s.entityID))
+                    }
+                }
+            }
+            Section {
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { on in
+                        do {
+                            if on { try SMAppService.mainApp.register() }
+                            else { try SMAppService.mainApp.unregister() }
+                            launchAtLogin = on
+                        } catch { launchAtLogin = (SMAppService.mainApp.status == .enabled) }
+                    }))
+            }
+        }
+        .formStyle(.grouped)
     }
 
-    /// Numeric sensors offered for the menu-bar readout.
+    // MARK: - Pinned
+
+    private var pinnedTab: some View {
+        Group {
+            if model.settings.pinned.isEmpty {
+                emptyState(icon: "pin", title: "No pinned items yet",
+                           detail: "Right-click any entity in the menu → Pin.")
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Drag to reorder — pinned items appear at the top of the menu.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal, 20).padding(.vertical, 10)
+                    List {
+                        ForEach(model.settings.pinned, id: \.self) { id in
+                            HStack(spacing: 10) {
+                                Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
+                                Text(model.entity(id)?.friendlyName ?? id).lineLimit(1)
+                                Spacer()
+                                Button { model.togglePin(id) } label: { Image(systemName: "pin.slash") }
+                                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Unpin")
+                            }
+                        }
+                        .onMove { model.moveFavorites(from: $0, to: $1) }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Entities
+
+    private var entitiesTab: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Search entities", text: $search).textFieldStyle(.plain)
+            }
+            .padding(7).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            List(filteredEntities, id: \.entityID) { s in
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(s.friendlyName).lineLimit(1)
+                        Text(s.entityID).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer(minLength: 8)
+                    Toggle("Pin", isOn: Binding(get: { model.isPinned(s.entityID) },
+                                                set: { _ in model.togglePin(s.entityID) }))
+                        .toggleStyle(.button).controlSize(.small)
+                    Toggle("Hide", isOn: binding(in: \.hidden, id: s.entityID))
+                        .toggleStyle(.button).controlSize(.small)
+                }
+            }
+        }
+    }
+
+    // MARK: - Alerts
+
+    private var alertsTab: some View {
+        Form {
+            Section("Menu") {
+                Toggle("Show offline / unavailable devices", isOn: Binding(
+                    get: { !model.settings.hideOffline },
+                    set: { model.settings.hideOffline = !$0; model.saveSettings() }))
+                Toggle("Show diagnostic / advanced entities", isOn: Binding(
+                    get: { model.settings.showDiagnostic },
+                    set: { model.settings.showDiagnostic = $0; model.saveSettings() }))
+            }
+            Section("Notifications") {
+                Toggle("Notify when a pinned device goes offline or stale", isOn: $model.settings.notifyOffline)
+                    .onChange(of: model.settings.notifyOffline) { model.saveSettings() }
+                HStack {
+                    Text("Consider stale after")
+                    Spacer()
+                    TextField("", value: Binding(
+                        get: { model.settings.stalenessWindow / 60 },
+                        set: { model.settings.stalenessWindow = $0 * 60; model.saveSettings() }
+                    ), format: .number).frame(width: 50).multilineTextAlignment(.trailing)
+                    Text("min").foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    // MARK: - Helpers
+
+    private func emptyState(icon: String, title: String, detail: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 34)).foregroundStyle(.tertiary)
+            Text(title).font(.headline).foregroundStyle(.secondary)
+            Text(detail).font(.callout).foregroundStyle(.tertiary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity).padding()
+    }
+
     private var menuBarCandidates: [EntityState] {
         model.store.entities.values
             .filter { $0.domain == .sensor && Double($0.state) != nil }
@@ -130,50 +216,6 @@ struct SettingsView: View {
         } catch { testResult = "Failed: \(error)" }
     }
 
-    private var entitiesTab: some View {
-        VStack {
-            TextField("Search", text: $search)
-            List(filteredEntities, id: \.entityID) { s in
-                HStack {
-                    Text(s.friendlyName)
-                    Text(s.entityID).font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                    Toggle("Pin", isOn: Binding(
-                        get: { model.isPinned(s.entityID) },
-                        set: { _ in model.togglePin(s.entityID) })).toggleStyle(.button)
-                    Toggle("Hide", isOn: binding(in: \.hidden, id: s.entityID)).toggleStyle(.button)
-                }
-            }
-        }.padding()
-    }
-
-    private var favoritesTab: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Drag to reorder. Favorites appear at the top of the menu, in this order.")
-                .font(.caption).foregroundStyle(.secondary)
-            if model.settings.pinned.isEmpty {
-                Spacer()
-                Text("No favorites yet.\nRight-click any entity in the menu → Pin.")
-                    .font(.callout).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
-                Spacer()
-            } else {
-                List {
-                    ForEach(model.settings.pinned, id: \.self) { id in
-                        HStack(spacing: 8) {
-                            Image(systemName: "line.3.horizontal").foregroundStyle(.tertiary)
-                            Text(model.entity(id)?.friendlyName ?? id).lineLimit(1)
-                            Spacer()
-                            Button { model.togglePin(id) } label: { Image(systemName: "pin.slash") }
-                                .buttonStyle(.plain).foregroundStyle(.secondary)
-                        }
-                    }
-                    .onMove { model.moveFavorites(from: $0, to: $1) }
-                }
-            }
-        }.padding()
-    }
-
     private var filteredEntities: [EntityState] {
         model.store.entities.values
             .filter { search.isEmpty || $0.friendlyName.localizedCaseInsensitiveContains(search)
@@ -191,24 +233,24 @@ struct SettingsView: View {
             })
     }
 
-    private var alertsTab: some View {
-        Form {
-            Toggle("Show offline / unavailable devices in the menu", isOn: Binding(
-                get: { !model.settings.hideOffline },
-                set: { model.settings.hideOffline = !$0; model.saveSettings() }))
-            Toggle("Show diagnostic / advanced entities", isOn: Binding(
-                get: { model.settings.showDiagnostic },
-                set: { model.settings.showDiagnostic = $0; model.saveSettings() }))
-            Toggle("Notify when a device goes offline/stale", isOn: $model.settings.notifyOffline)
-                .onChange(of: model.settings.notifyOffline) { model.saveSettings() }
-            HStack {
-                Text("Stale after")
-                TextField("minutes", value: Binding(
-                    get: { model.settings.stalenessWindow / 60 },
-                    set: { model.settings.stalenessWindow = $0 * 60; model.saveSettings() }
-                ), format: .number).frame(width: 60)
-                Text("minutes")
+    private enum Tab: String, CaseIterable, Identifiable {
+        case connection, pinned, entities, alerts
+        var id: Self { self }
+        var title: String {
+            switch self {
+            case .connection: "Connection"
+            case .pinned: "Pinned"
+            case .entities: "Entities"
+            case .alerts: "Alerts"
             }
-        }.padding()
+        }
+        var icon: String {
+            switch self {
+            case .connection: "network"
+            case .pinned: "pin"
+            case .entities: "list.bullet"
+            case .alerts: "bell"
+            }
+        }
     }
 }
