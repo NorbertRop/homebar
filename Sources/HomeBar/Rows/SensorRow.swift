@@ -14,7 +14,7 @@ struct SensorRow: View {
                 if numeric {
                     Button {
                         withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
-                        if expanded { model.loadDetail(entityID) }
+                        if expanded { model.loadHistory(entityID) }
                     } label: { header(s, expandable: true) }
                     .buttonStyle(.plain)
                 } else {

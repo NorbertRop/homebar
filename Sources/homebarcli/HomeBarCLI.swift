@@ -7,7 +7,7 @@ struct HomeBarCLI: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "homebarcli",
         abstract: "Debug HomeBar's Home Assistant connection.",
-        subcommands: [States.self, Watch.self, Toggle.self, Call.self])
+        subcommands: [States.self, Watch.self, Toggle.self, Call.self, History.self])
 }
 
 struct ConnectOptions: ParsableArguments {
@@ -60,6 +60,20 @@ struct Toggle: AsyncParsableCommand {
         let client = try await conn.connectedClient()
         try await client.send(HACommand.toggle(entityID))
         print("toggled \(entityID)")
+        await client.disconnect()
+    }
+}
+
+struct History: AsyncParsableCommand {
+    @OptionGroup var conn: ConnectOptions
+    @Argument(help: "entity_id, e.g. sensor.temperature") var entityID: String
+    @Option(help: "Window in hours") var hours: Double = 24
+    func run() async throws {
+        let client = try await conn.connectedClient()
+        let start = Date()
+        let pts = try await client.history(entityID: entityID, hours: hours)
+        let elapsed = Date().timeIntervalSince(start)
+        print("\(entityID): \(pts.count) points over \(hours)h in \(String(format: "%.2f", elapsed))s")
         await client.disconnect()
     }
 }
