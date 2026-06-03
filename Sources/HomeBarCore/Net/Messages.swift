@@ -59,6 +59,9 @@ public func authFrame(token: String) -> String {
 public func simpleFrame(id: Int, type: String) -> String {
     encode(["id": .int(id), "type": .string(type)])
 }
+public func pingFrame(id: Int) -> String {
+    encode(["id": .int(id), "type": .string("ping")])
+}
 public func subscribeFrame(id: Int, eventType: String) -> String {
     encode(["id": .int(id), "type": .string("subscribe_events"), "event_type": .string(eventType)])
 }

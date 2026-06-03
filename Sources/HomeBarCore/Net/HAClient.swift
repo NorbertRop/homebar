@@ -75,6 +75,13 @@ public actor HAClient {
         _ = try await sendAndWait(id: id, frame: try callServiceFrame(id: id, call))
     }
 
+    /// Heartbeat: round-trip a ping/pong. Throws on timeout, which tears the socket down and
+    /// triggers a reconnect — this is how a connection that died during sleep is detected.
+    public func ping() async throws {
+        let id = nextID; nextID += 1
+        _ = try await sendAndWait(id: id, frame: pingFrame(id: id), timeout: 10)
+    }
+
     /// Numeric history samples for one entity over the last `hours`, oldest→newest.
     public func history(entityID: String, hours: Double) async throws -> [HistoryPoint] {
         let end = Date(), start = end.addingTimeInterval(-hours * 3600)
@@ -110,12 +117,16 @@ public actor HAClient {
             Task { try? await self.transport.send(frame) }
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(timeout))
-                await self?.failPending(id, with: .timeout)
+                await self?.timedOut(id)
             }
         }
     }
-    private func failPending(_ id: Int, with error: HAError) {
-        if let c = pending.removeValue(forKey: id) { c.resume(throwing: error) }
+    /// A request got no reply in time — a strong signal the socket is dead. Fail it and tear the
+    /// connection down so the connect loop reconnects.
+    private func timedOut(_ id: Int) {
+        guard let c = pending.removeValue(forKey: id) else { return }
+        c.resume(throwing: HAError.timeout)
+        teardown(HAError.timeout)
     }
 
     private func startReceiveLoop() {
@@ -127,9 +138,10 @@ public actor HAClient {
             }
         }
     }
-    /// The socket died: fail in-flight requests and end the events stream so the app's
-    /// connect loop stops awaiting and reconnects.
+    /// The socket died: stop receiving, fail in-flight requests, and end the events stream so the
+    /// app's connect loop stops awaiting and reconnects. Idempotent.
     private func teardown(_ error: Error) {
+        receiveTask?.cancel(); receiveTask = nil
         failAllPending(error)
         eventContinuation.finish()
         connectionState = .disconnected
@@ -142,6 +154,8 @@ public actor HAClient {
             guard let id = obj["id"]?.intValue, let c = pending.removeValue(forKey: id) else { return }
             if obj["success"]?.boolValue == true { c.resume(returning: obj["result"] ?? .null) }
             else { c.resume(throwing: HAError.serviceCallFailed(obj["error"]?["message"]?.stringValue ?? "unknown")) }
+        case "pong":
+            if let id = obj["id"]?.intValue, let c = pending.removeValue(forKey: id) { c.resume(returning: .null) }
         case "event":
             if let change = Self.parseStateChanged(obj) { eventContinuation.yield(change) }
         default: break
