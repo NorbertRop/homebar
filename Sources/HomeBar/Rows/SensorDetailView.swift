@@ -41,7 +41,7 @@ struct SensorDetailView: View {
                 LineMark(x: .value("Time", pt.date), y: .value("Value", pt.value))
                     .foregroundStyle(color)
                     .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
-                    .interpolationMethod(.catmullRom)
+                    .interpolationMethod(.linear)
             }
             if let h = hover {
                 RuleMark(x: .value("Time", h.date)).foregroundStyle(.secondary.opacity(0.4))
@@ -95,15 +95,21 @@ struct SensorDetailView: View {
         }
     }
 
-    /// A focused y-range around the data: proportional headroom with a magnitude-aware floor —
-    /// so ordinary ranges aren't squashed toward zero, yet flat / near-zero series don't blow up
-    /// the scale. Charts then picks rounded tick values within it.
+    /// A focused y-range from robust 2nd–98th percentile bounds, so a lone outlier (e.g. a 2000 lx
+    /// blip) doesn't squash the rest of the series. Proportional headroom with a magnitude-aware
+    /// floor keeps ordinary and flat ranges sane. The spike still shows (clipped at the edge) and
+    /// the Min/Max stats report the true extremes.
     private func yDomain(_ pts: [HistoryPoint]) -> ClosedRange<Double> {
-        let vals = pts.map(\.value)
-        let lo = vals.min() ?? 0, hi = vals.max() ?? 1
+        let vals = pts.map(\.value).sorted()
+        guard !vals.isEmpty else { return 0...1 }
+        let lo = percentile(vals, 0.02), hi = percentile(vals, 0.98)
         let span = hi - lo
         let margin = span > 0 ? span * 0.15 : max(abs(hi), 1) * 0.1
         return (lo - margin)...(hi + margin)
+    }
+    private func percentile(_ sorted: [Double], _ p: Double) -> Double {
+        let i = Int((Double(sorted.count - 1) * p).rounded())
+        return sorted[min(max(i, 0), sorted.count - 1)]
     }
 
     private func stats(_ vals: [Double], lo: Double, hi: Double, unit: String?) -> some View {
