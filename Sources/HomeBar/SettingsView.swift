@@ -18,6 +18,7 @@ struct SettingsView: View {
             alertsTab.tabItem { Label("Alerts", systemImage: "bell") }
         }
         .frame(width: 460, height: 420)
+        .followsActiveSpace()
         .onAppear {
             urlString = model.settings.serverURL?.absoluteString ?? ""
             token = model.tokenStore.read() ?? ""

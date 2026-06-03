@@ -6,6 +6,14 @@ struct MenuContentView: View {
     @Bindable var model: AppModel
     @State private var search = ""
     @FocusState private var searchFocused: Bool
+    @Environment(\.openSettings) private var openSettings
+
+    /// Open Settings and pull the app to the foreground so the window lands on the user's current
+    /// Space (the window itself follows via `.followsActiveSpace()`), not wherever it last was.
+    private func showSettings() {
+        openSettings()
+        NSApp.activate()
+    }
 
     private var grouped: GroupedEntities {
         let nonAutomation = model.store.entities.values.filter { $0.domain != .automation }
@@ -169,7 +177,7 @@ struct MenuContentView: View {
             Text("Connect to Home Assistant").font(.headline)
             Text("Add your server URL and a long-lived access token in Settings.")
                 .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            SettingsLink { Text("Open Settings…") }
+            Button("Open Settings…") { showSettings() }
         }.padding().frame(maxWidth: .infinity)
     }
 
@@ -180,7 +188,7 @@ struct MenuContentView: View {
                     .font(.caption).foregroundStyle(.red)
             }
             Spacer()
-            SettingsLink { Image(systemName: "gearshape") }
+            Button { showSettings() } label: { Image(systemName: "gearshape") }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
