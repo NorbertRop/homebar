@@ -11,8 +11,11 @@ struct WindowConfigurator: NSViewRepresentable {
         DispatchQueue.main.async { [weak view] in
             guard let window = view?.window else { return }
             window.collectionBehavior.formUnion([.moveToActiveSpace, .fullScreenAuxiliary])
-            NSApp.activate()
+            // Force frontmost (cooperative activate() lets an accessory app slip back behind the
+            // previously-active app once the menu dismisses), then pin the window's z-order.
+            NSApp.activate(ignoringOtherApps: true)
             window.makeKeyAndOrderFront(nil)
+            window.orderFrontRegardless()
         }
         return view
     }

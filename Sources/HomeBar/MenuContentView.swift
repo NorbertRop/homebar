@@ -12,7 +12,9 @@ struct MenuContentView: View {
     /// Space (the window itself follows via `.followsActiveSpace()`), not wherever it last was.
     private func showSettings() {
         openSettings()
-        NSApp.activate()
+        // Defer past the menu dismissal, then force the app frontmost so Settings stays on top
+        // rather than slipping behind the apps already on this Space.
+        DispatchQueue.main.async { NSApp.activate(ignoringOtherApps: true) }
     }
 
     private var grouped: GroupedEntities {
