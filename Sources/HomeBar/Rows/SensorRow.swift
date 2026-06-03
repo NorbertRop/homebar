@@ -11,25 +11,14 @@ struct SensorRow: View {
         if let s = model.entity(entityID) {
             let numeric = Double(s.state) != nil
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
-                    Text(nameOverride ?? s.friendlyName).lineLimit(1)
-                    Spacer()
-                    if let pts = model.sparkline(for: entityID), pts.count > 1 {
-                        Sparkline(values: pts, fill: true, dot: true)
-                            .frame(width: 46, height: 16).foregroundStyle(chartTint)
-                    }
-                    Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
-                    if numeric {
-                        Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
-                            .rotationEffect(.degrees(expanded ? 90 : 0))
-                    }
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    guard numeric else { return }
-                    withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
-                    if expanded { model.loadDetail(entityID) }
+                if numeric {
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+                        if expanded { model.loadDetail(entityID) }
+                    } label: { header(s, expandable: true) }
+                    .buttonStyle(.plain)
+                } else {
+                    header(s, expandable: false)
                 }
                 if expanded, numeric {
                     SensorDetailView(model: model, entityID: entityID)
@@ -37,6 +26,26 @@ struct SensorRow: View {
             }
             .onAppear { if numeric { model.loadHistory(entityID) } }
         }
+    }
+
+    private func header(_ s: EntityState, expandable: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
+            Text(nameOverride ?? s.friendlyName).lineLimit(1).truncationMode(.tail)
+            Spacer(minLength: 6)
+            if let pts = model.sparkline(for: entityID), pts.count > 1 {
+                Sparkline(values: pts, fill: true, dot: true)
+                    .frame(width: 40, height: 16).foregroundStyle(chartTint)
+            }
+            // Value keeps its full width; the name truncates instead so digits never get cramped.
+            Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit()
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false)
+            if expandable {
+                Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                    .rotationEffect(.degrees(expanded ? 90 : 0))
+            }
+        }
+        .contentShape(Rectangle())
     }
 
     private func displayValue(_ s: EntityState) -> String {
