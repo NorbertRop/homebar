@@ -9,7 +9,7 @@ struct SettingsView: View {
     @State private var testResult: String = ""
     @State private var search: String = ""
     @State private var launchAtLogin = false
-    @State private var tab: Tab = .connection
+    @State private var tab: Tab = .general
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,11 +45,52 @@ struct SettingsView: View {
 
     @ViewBuilder private var content: some View {
         switch tab {
+        case .general: generalTab
         case .connection: connectionTab
         case .pinned: pinnedTab
         case .entities: entitiesTab
         case .alerts: alertsTab
         }
+    }
+
+    // MARK: - General
+
+    private var generalTab: some View {
+        Form {
+            Section("Menu Bar") {
+                Picker("Show", selection: Binding(
+                    get: { model.settings.menuBarEntityID },
+                    set: { model.settings.menuBarEntityID = $0; model.saveSettings() })) {
+                    Text("Icon only").tag(String?.none)
+                    ForEach(menuBarCandidates, id: \.entityID) { s in
+                        Text(s.friendlyName).tag(String?.some(s.entityID))
+                    }
+                }
+            }
+            Section {
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { on in
+                        do {
+                            if on { try SMAppService.mainApp.register() }
+                            else { try SMAppService.mainApp.unregister() }
+                            launchAtLogin = on
+                        } catch { launchAtLogin = (SMAppService.mainApp.status == .enabled) }
+                    }))
+            }
+            Section("Updates") {
+                LabeledContent("Current version", value: appVersion)
+                Button("Check for Updates…") { model.checkForUpdates?() }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var appVersion: String {
+        let info = Bundle.main.infoDictionary
+        let v = info?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = info?["CFBundleVersion"] as? String ?? "?"
+        return "\(v) (\(b))"
     }
 
     // MARK: - Connection
@@ -75,27 +116,6 @@ struct SettingsView: View {
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
                 }
-            }
-            Section("Menu Bar") {
-                Picker("Show", selection: Binding(
-                    get: { model.settings.menuBarEntityID },
-                    set: { model.settings.menuBarEntityID = $0; model.saveSettings() })) {
-                    Text("Icon only").tag(String?.none)
-                    ForEach(menuBarCandidates, id: \.entityID) { s in
-                        Text(s.friendlyName).tag(String?.some(s.entityID))
-                    }
-                }
-            }
-            Section {
-                Toggle("Launch at login", isOn: Binding(
-                    get: { launchAtLogin },
-                    set: { on in
-                        do {
-                            if on { try SMAppService.mainApp.register() }
-                            else { try SMAppService.mainApp.unregister() }
-                            launchAtLogin = on
-                        } catch { launchAtLogin = (SMAppService.mainApp.status == .enabled) }
-                    }))
             }
         }
         .formStyle(.grouped)
@@ -266,10 +286,11 @@ struct SettingsView: View {
 
 
     private enum Tab: String, CaseIterable, Identifiable {
-        case connection, pinned, entities, alerts
+        case general, connection, pinned, entities, alerts
         var id: Self { self }
         var title: String {
             switch self {
+            case .general: "General"
             case .connection: "Connection"
             case .pinned: "Pinned"
             case .entities: "Entities"
@@ -278,6 +299,7 @@ struct SettingsView: View {
         }
         var icon: String {
             switch self {
+            case .general: "gearshape"
             case .connection: "network"
             case .pinned: "pin"
             case .entities: "list.bullet"
