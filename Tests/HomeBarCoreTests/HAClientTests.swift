@@ -24,6 +24,14 @@ private let authInvalid = #"{"type":"auth_invalid","message":"bad"}"#
     await #expect(throws: HAError.authFailed) { try await client.connect() }
 }
 
+@Test func connectTimesOutOnSilentHandshake() async {
+    let t = FakeWebSocketTransport()
+    let client = HAClient(url: URL(string: "ws://h")!, token: "tok", transport: t)
+    // Server accepts the socket but never sends auth_required (e.g. HA mid-restart).
+    await #expect(throws: HAError.timeout) { try await client.connect(timeout: 0.3) }
+    #expect(await t.didClose)   // the timed-out connect tears the socket down so the loop can retry
+}
+
 @Test func getStatesDecodesResult() async throws {
     let t = FakeWebSocketTransport()
     let client = HAClient(url: URL(string: "ws://h")!, token: "tok", transport: t)

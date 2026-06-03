@@ -25,6 +25,7 @@ import Observation
     private let monitor: StalenessMonitor
     private var client: HAClient?
     private var connectTask: Task<Void, Never>?
+    private var lastCacheSave = Date.distantPast
 
     static let cacheURL = Settings.defaultURL().deletingLastPathComponent()
         .appendingPathComponent("state-cache.json")
@@ -57,8 +58,15 @@ import Observation
     }
 
     func restart() {
-        connectTask?.cancel(); connectTask = nil
-        Task { await client?.disconnect(); client = nil; start() }
+        let old = connectTask
+        connectTask = nil
+        old?.cancel()
+        Task {
+            await old?.value          // let the old loop fully unwind before starting a new one
+            await client?.disconnect()
+            client = nil
+            start()
+        }
     }
 
     func saveSettings() {
@@ -80,7 +88,7 @@ import Observation
                 store.registry = (try? await client.fetchRegistry()) ?? store.registry
                 let snapshot = try await client.getStates()
                 if !snapshot.isEmpty { store.applySnapshot(snapshot); dataVersion &+= 1 }
-                try? store.saveCache(to: Self.cacheURL)
+                try? store.saveCache(to: Self.cacheURL); lastCacheSave = Date()
                 evaluateStaleness()
                 try await client.subscribeStateChanges()
                 let ticker = Task { [weak self] in
@@ -94,7 +102,9 @@ import Observation
                 for await change in client.events {
                     store.apply(change)
                     dataVersion &+= 1
-                    try? store.saveCache(to: Self.cacheURL)
+                    if Date().timeIntervalSince(lastCacheSave) > 5 {   // throttle disk writes off the main thread's hot path
+                        try? store.saveCache(to: Self.cacheURL); lastCacheSave = Date()
+                    }
                     evaluateStaleness()
                 }
                 ticker.cancel()

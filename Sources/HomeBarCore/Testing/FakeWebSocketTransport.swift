@@ -17,7 +17,11 @@ public actor FakeWebSocketTransport: WebSocketTransport {
         if !inbound.isEmpty { return inbound.removeFirst() }
         return try await withCheckedThrowingContinuation { waiters.append($0) }
     }
-    public func close() async { didClose = true }
+    public func close() async {
+        didClose = true
+        let pending = waiters; waiters = []
+        for c in pending { c.resume(throwing: HAError.notConnected) }   // a real socket errors blocked receives
+    }
 
     /// Push a frame "from the server".
     public func enqueue(_ frame: String) {

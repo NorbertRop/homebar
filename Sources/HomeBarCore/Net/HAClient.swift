@@ -32,17 +32,34 @@ public actor HAClient {
         (events, eventContinuation) = AsyncStream.makeStream(of: StateChange.self)
     }
 
-    public func connect() async throws {
+    public func connect(timeout: TimeInterval = 15) async throws {
         connectionState = .connecting
-        try await transport.connect()
-        guard frameType(try await transport.receive()) == "auth_required" else {
-            throw HAError.protocolError("expected auth_required")
-        }
-        try await transport.send(authFrame(token: token))
-        let resp = try await transport.receive()
-        guard frameType(resp) == "auth_ok" else {
-            connectionState = .failed("auth")
-            throw HAError.authFailed
+        do {
+            try await withThrowingTaskGroup(of: Void.self) { group in
+                group.addTask { [transport, token] in
+                    try await transport.connect()
+                    guard frameType(try await transport.receive()) == "auth_required" else {
+                        throw HAError.protocolError("expected auth_required")
+                    }
+                    try await transport.send(authFrame(token: token))
+                    guard frameType(try await transport.receive()) == "auth_ok" else {
+                        throw HAError.authFailed
+                    }
+                }
+                group.addTask {
+                    try await Task.sleep(for: .seconds(timeout))
+                    throw HAError.timeout
+                }
+                defer { group.cancelAll() }
+                do { try await group.next() }                  // first of handshake / timeout
+                catch {
+                    await transport.close()                    // unstick a handshake blocked on receive()
+                    throw error
+                }
+            }
+        } catch {
+            connectionState = .disconnected
+            throw error
         }
         connectionState = .authenticated
         startReceiveLoop()
