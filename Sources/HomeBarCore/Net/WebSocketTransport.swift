@@ -39,4 +39,5 @@ public enum HAError: Error, Equatable {
     case authFailed
     case protocolError(String)
     case serviceCallFailed(String)
+    case timeout
 }

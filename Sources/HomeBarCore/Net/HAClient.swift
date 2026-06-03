@@ -67,19 +67,12 @@ public actor HAClient {
 
     public func subscribeStateChanges() async throws {
         let id = nextID; nextID += 1
-        _ = try await withCheckedThrowingContinuation { (c: CheckedContinuation<JSONValue, Error>) in
-            pending[id] = c
-            Task { try? await self.transport.send(subscribeFrame(id: id, eventType: "state_changed")) }
-        }
+        _ = try await sendAndWait(id: id, frame: subscribeFrame(id: id, eventType: "state_changed"))
     }
 
     public func send(_ call: ServiceCall) async throws {
         let id = nextID; nextID += 1
-        let frame = try callServiceFrame(id: id, call)
-        _ = try await withCheckedThrowingContinuation { (c: CheckedContinuation<JSONValue, Error>) in
-            pending[id] = c
-            Task { try? await self.transport.send(frame) }
-        }
+        _ = try await sendAndWait(id: id, frame: try callServiceFrame(id: id, call))
     }
 
     /// Numeric history samples for one entity over the last `hours`, oldest→newest.
@@ -87,10 +80,7 @@ public actor HAClient {
         let end = Date(), start = end.addingTimeInterval(-hours * 3600)
         let id = nextID; nextID += 1
         let frame = historyFrame(id: id, entityID: entityID, start: start, end: end)
-        let result = try await withCheckedThrowingContinuation { (c: CheckedContinuation<JSONValue, Error>) in
-            pending[id] = c
-            Task { try? await self.transport.send(frame) }
-        }
+        let result = try await sendAndWait(id: id, frame: frame)
         guard let arr = result[entityID]?.arrayValue else { return [] }
         return arr.compactMap { item in
             guard let v = (item["s"] ?? item["state"])?.coercedString.flatMap(Double.init) else { return nil }
@@ -103,15 +93,29 @@ public actor HAClient {
         receiveTask?.cancel(); receiveTask = nil
         await transport.close()
         failAllPending(HAError.notConnected)
+        eventContinuation.finish()
         connectionState = .disconnected
     }
 
     private func request(type: String) async throws -> JSONValue {
         let id = nextID; nextID += 1
-        return try await withCheckedThrowingContinuation { (c: CheckedContinuation<JSONValue, Error>) in
+        return try await sendAndWait(id: id, frame: simpleFrame(id: id, type: type))
+    }
+
+    /// Send a frame and await its `result`, failing after `timeout`. Without this a request
+    /// on a half-dead socket (e.g. after the Mac sleeps) would hang indefinitely.
+    private func sendAndWait(id: Int, frame: String, timeout: TimeInterval = 12) async throws -> JSONValue {
+        try await withCheckedThrowingContinuation { (c: CheckedContinuation<JSONValue, Error>) in
             pending[id] = c
-            Task { try? await self.transport.send(simpleFrame(id: id, type: type)) }
+            Task { try? await self.transport.send(frame) }
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(timeout))
+                await self?.failPending(id, with: .timeout)
+            }
         }
+    }
+    private func failPending(_ id: Int, with error: HAError) {
+        if let c = pending.removeValue(forKey: id) { c.resume(throwing: error) }
     }
 
     private func startReceiveLoop() {
@@ -119,9 +123,16 @@ public actor HAClient {
             while !Task.isCancelled {
                 guard let self else { return }
                 do { await self.handle(try await self.transport.receive()) }
-                catch { await self.failAllPending(error); return }
+                catch { await self.teardown(error); return }
             }
         }
+    }
+    /// The socket died: fail in-flight requests and end the events stream so the app's
+    /// connect loop stops awaiting and reconnects.
+    private func teardown(_ error: Error) {
+        failAllPending(error)
+        eventContinuation.finish()
+        connectionState = .disconnected
     }
 
     private func handle(_ frame: String) {

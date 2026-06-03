@@ -174,9 +174,13 @@ import Observation
         guard let client else { return }
         historyFetchedAt[id] = Date()
         Task {
-            let pts = (try? await client.history(entityID: id, hours: 24)) ?? []
-            if pts.count > 1 { histories[id] = Self.downsample(pts, to: 240) }
-            historyLoaded.insert(id)
+            do {
+                let pts = try await client.history(entityID: id, hours: 24)
+                if pts.count > 1 { histories[id] = Self.downsample(pts, to: 240) }
+                historyLoaded.insert(id)
+            } catch {
+                historyFetchedAt[id] = .distantPast   // a failed/timed-out fetch should retry, not stick
+            }
             dataVersion &+= 1
         }
     }

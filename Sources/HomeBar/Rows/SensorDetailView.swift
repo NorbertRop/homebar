@@ -107,20 +107,22 @@ struct SensorDetailView: View {
     }
 
     private func stats(_ vals: [Double], lo: Double, hi: Double, unit: String?) -> some View {
-        HStack(spacing: 16) {
-            stat("Now", vals.last ?? 0, unit)
-            stat("Min", lo, unit)
-            stat("Max", hi, unit)
-            stat("Avg", vals.reduce(0, +) / Double(vals.count), unit)
-            Spacer()
-            Text("last 24h").font(.caption2).foregroundStyle(.tertiary)
+        // Bare numbers + the unit shown once, so four stats fit one row even for wide units (ppm/hPa).
+        HStack(spacing: 14) {
+            stat("Now", vals.last ?? 0)
+            stat("Min", lo)
+            stat("Max", hi)
+            stat("Avg", vals.reduce(0, +) / Double(vals.count))
+            Spacer(minLength: 4)
+            Text(unit.map { "\($0) · 24h" } ?? "24h")
+                .font(.caption2).foregroundStyle(.tertiary).fixedSize()
         }
     }
 
-    private func stat(_ label: String, _ v: Double, _ unit: String?) -> some View {
+    private func stat(_ label: String, _ v: Double) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(label).font(.caption2).foregroundStyle(.tertiary)
-            Text(compactValue(v, unit: unit)).font(.caption).monospacedDigit()
+            Text(compactValue(v, unit: nil)).font(.caption).monospacedDigit().fixedSize()
         }
     }
 }
