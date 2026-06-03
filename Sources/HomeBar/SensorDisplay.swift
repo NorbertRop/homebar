@@ -24,10 +24,20 @@ func sensorSymbol(_ deviceClass: String?) -> String {
     }
 }
 
+/// Abbreviates large magnitudes so values stay narrow and never overflow a row or axis:
+/// 612 → "612", 95175 → "95.2K", 1_500_000 → "1.5M". Values under 10k keep full precision.
+func abbreviatedNumber(_ v: Double) -> String {
+    func plain(_ x: Double) -> String { x == x.rounded() ? String(Int(x)) : String(format: "%.1f", x) }
+    let a = abs(v)
+    if a >= 1_000_000 { return plain(v / 1_000_000) + "M" }
+    if a >= 10_000 { return plain(v / 1_000) + "K" }
+    return plain(v)
+}
+
 /// Compact numeric formatting shared by the menu-bar label and the sensor detail stats:
-/// "21°", "47%", "612 ppm".
+/// "21°", "47%", "612 ppm", "95.2K KiB/s".
 func compactValue(_ v: Double, unit: String?) -> String {
-    let n = v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v)
+    let n = abbreviatedNumber(v)
     guard let u = unit else { return n }
     switch u {
     case "°C", "°F": return "\(n)°"

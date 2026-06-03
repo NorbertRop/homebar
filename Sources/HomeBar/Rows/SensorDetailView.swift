@@ -58,9 +58,11 @@ struct SensorDetailView: View {
             }
         }
         .chartYAxis {
-            AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { _ in
+            AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { value in
                 AxisGridLine().foregroundStyle(.quaternary)
-                AxisValueLabel()
+                AxisValueLabel {
+                    if let v = value.as(Double.self) { Text(abbreviatedNumber(v)) }
+                }
             }
         }
         .chartOverlay { proxy in
