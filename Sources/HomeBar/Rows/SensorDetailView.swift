@@ -17,9 +17,8 @@ struct SensorDetailView: View {
             if pts.count > 1 {
                 let vals = pts.map(\.value)
                 let lo = vals.min() ?? 0, hi = vals.max() ?? 1
-                let pad = max((hi - lo) * 0.12, 0.5)
                 VStack(alignment: .leading, spacing: 6) {
-                    chart(pts, lo: lo, hi: hi, pad: pad, color: color, unit: unit).frame(height: 116)
+                    chart(pts, color: color, unit: unit).frame(height: 116)
                     stats(vals, lo: lo, hi: hi, unit: unit)
                 }
             } else {
@@ -33,8 +32,7 @@ struct SensorDetailView: View {
         .padding(.leading, 26).padding(.trailing, 6).padding(.bottom, 4)
     }
 
-    private func chart(_ pts: [HistoryPoint], lo: Double, hi: Double, pad: Double,
-                       color: Color, unit: String?) -> some View {
+    private func chart(_ pts: [HistoryPoint], color: Color, unit: String?) -> some View {
         Chart {
             ForEach(pts, id: \.date) { pt in
                 LineMark(x: .value("Time", pt.date), y: .value("Value", pt.value))
@@ -59,7 +57,6 @@ struct SensorDetailView: View {
                     .foregroundStyle(color).symbolSize(60)
             }
         }
-        .chartYScale(domain: (lo - pad)...(hi + pad))
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
                 AxisGridLine().foregroundStyle(.quaternary)
@@ -67,7 +64,7 @@ struct SensorDetailView: View {
             }
         }
         .chartYAxis {
-            AxisMarks(position: .trailing, values: [lo, (lo + hi) / 2, hi]) { _ in
+            AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { _ in
                 AxisGridLine().foregroundStyle(.quaternary)
                 AxisValueLabel()
             }
