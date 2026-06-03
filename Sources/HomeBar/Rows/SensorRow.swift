@@ -17,7 +17,7 @@ struct SensorRow: View {
                     Spacer()
                     if let pts = model.sparkline(for: entityID), pts.count > 1 {
                         Sparkline(values: pts, fill: true, dot: true)
-                            .frame(width: 46, height: 16).foregroundStyle(sensorColor(s.deviceClass))
+                            .frame(width: 46, height: 16).foregroundStyle(chartTint)
                     }
                     Text(displayValue(s)).foregroundStyle(.secondary).monospacedDigit().lineLimit(1)
                     if numeric {

@@ -12,7 +12,7 @@ struct SensorDetailView: View {
     var body: some View {
         let pts = model.detail(for: entityID) ?? []
         let unit = model.entity(entityID)?.unit
-        let color = sensorColor(model.entity(entityID)?.deviceClass)
+        let color = chartTint
         Group {
             if pts.count > 1 {
                 let vals = pts.map(\.value)
