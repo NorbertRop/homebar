@@ -41,22 +41,12 @@ struct SensorDetailView: View {
                     .interpolationMethod(.catmullRom)
             }
             if let h = hover {
-                RuleMark(x: .value("Time", h.date))
-                    .foregroundStyle(.secondary.opacity(0.4))
-                    .annotation(position: .top, spacing: 2,
-                                overflowResolution: .init(x: .fit(to: .chart), y: .disabled)) {
-                        VStack(alignment: .leading, spacing: 1) {
-                            Text(compactValue(h.value, unit: unit)).font(.caption).bold().monospacedDigit()
-                            Text(h.date.formatted(date: .omitted, time: .shortened))
-                                .font(.caption2).foregroundStyle(.secondary)
-                        }
-                        .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-                    }
+                RuleMark(x: .value("Time", h.date)).foregroundStyle(.secondary.opacity(0.4))
                 PointMark(x: .value("Time", h.date), y: .value("Value", h.value))
                     .foregroundStyle(color).symbolSize(60)
             }
         }
+        .chartYScale(domain: yDomain(pts))
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
                 AxisGridLine().foregroundStyle(.quaternary)
@@ -87,6 +77,30 @@ struct SensorDetailView: View {
                     }
             }
         }
+        // Readout pinned inside the chart's own bounds, so it can never spill into the header above.
+        .overlay(alignment: .topLeading) {
+            if let h = hover {
+                HStack(spacing: 5) {
+                    Text(compactValue(h.value, unit: unit)).fontWeight(.semibold).monospacedDigit()
+                    Text(h.date.formatted(date: .omitted, time: .shortened)).foregroundStyle(.secondary)
+                }
+                .font(.caption2)
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(.regularMaterial, in: Capsule())
+                .padding(6)
+            }
+        }
+    }
+
+    /// A focused y-range around the data: proportional headroom with a magnitude-aware floor —
+    /// so ordinary ranges aren't squashed toward zero, yet flat / near-zero series don't blow up
+    /// the scale. Charts then picks rounded tick values within it.
+    private func yDomain(_ pts: [HistoryPoint]) -> ClosedRange<Double> {
+        let vals = pts.map(\.value)
+        let lo = vals.min() ?? 0, hi = vals.max() ?? 1
+        let span = hi - lo
+        let margin = span > 0 ? span * 0.15 : max(abs(hi), 1) * 0.1
+        return (lo - margin)...(hi + margin)
     }
 
     private func stats(_ vals: [Double], lo: Double, hi: Double, unit: String?) -> some View {
