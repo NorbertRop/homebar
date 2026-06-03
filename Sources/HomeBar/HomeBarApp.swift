@@ -11,10 +11,6 @@ struct HomeBarApp: App {
             MenuBarLabel(model: delegate.model)
         }
         .menuBarExtraStyle(.window)
-
-        Settings {
-            SettingsView(model: delegate.model)
-        }
     }
 }
 
@@ -23,8 +19,10 @@ struct HomeBarApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
+    private lazy var settingsWindow = SettingsWindow(model: model)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.start()
+        model.presentSettings = { [weak self] in self?.settingsWindow.show() }
     }
 }

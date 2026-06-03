@@ -6,16 +6,8 @@ struct MenuContentView: View {
     @Bindable var model: AppModel
     @State private var search = ""
     @FocusState private var searchFocused: Bool
-    @Environment(\.openSettings) private var openSettings
-
-    /// Open Settings and pull the app to the foreground so the window lands on the user's current
-    /// Space (the window itself follows via `.followsActiveSpace()`), not wherever it last was.
-    private func showSettings() {
-        openSettings()
-        // Defer past the menu dismissal, then force the app frontmost so Settings stays on top
-        // rather than slipping behind the apps already on this Space.
-        DispatchQueue.main.async { NSApp.activate(ignoringOtherApps: true) }
-    }
+    /// Show the Settings window — managed by the app delegate so it lands on the current Space.
+    private func showSettings() { model.presentSettings?() }
 
     private var grouped: GroupedEntities {
         let nonAutomation = model.store.entities.values.filter { $0.domain != .automation }

@@ -12,6 +12,8 @@ enum ConnectionStatus: Equatable {
     let store = StateStore()
     var settings: Settings
     var connection: ConnectionStatus = .connecting
+    /// Shows the (AppKit-managed) Settings window; wired up by the app delegate.
+    var presentSettings: (() -> Void)?
     var offlineEntityIDs: Set<String> = []
     var offlineCount: Int { offlineEntityIDs.count }
     /// Bumped on every snapshot/delta. A direct observable property the menu reads so it
