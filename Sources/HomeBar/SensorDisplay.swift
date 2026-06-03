@@ -1,5 +1,19 @@
-import Foundation
+import SwiftUI
 import HomeBarCore
+
+/// A distinct accent color per sensor type, so charts/sparklines read as data rather than chrome.
+func sensorColor(_ deviceClass: String?) -> Color {
+    switch deviceClass {
+    case "temperature": .orange
+    case "humidity": .teal
+    case "carbon_dioxide": .green
+    case "pressure", "atmospheric_pressure": .indigo
+    case "illuminance": .yellow
+    case "power", "energy": .yellow
+    case "battery": .mint
+    default: .blue
+    }
+}
 
 /// SF Symbol for a sensor's device class — shared by the sensor row and the menu-bar label.
 func sensorSymbol(_ deviceClass: String?) -> String {
