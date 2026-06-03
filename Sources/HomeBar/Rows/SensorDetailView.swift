@@ -16,11 +16,9 @@ struct SensorDetailView: View {
                 let pad = max((hi - lo) * 0.12, 0.5)
                 VStack(alignment: .leading, spacing: 6) {
                     Chart(pts, id: \.date) { pt in
-                        AreaMark(x: .value("Time", pt.date), y: .value("Value", pt.value))
-                            .foregroundStyle(LinearGradient(colors: [.accentColor.opacity(0.22), .clear],
-                                                            startPoint: .top, endPoint: .bottom))
                         LineMark(x: .value("Time", pt.date), y: .value("Value", pt.value))
                             .foregroundStyle(.tint)
+                            .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
                             .interpolationMethod(.catmullRom)
                     }
                     .chartYScale(domain: (lo - pad)...(hi + pad))
