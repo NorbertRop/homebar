@@ -18,7 +18,7 @@ struct SensorDetailView: View {
                 let vals = pts.map(\.value)
                 let lo = vals.min() ?? 0, hi = vals.max() ?? 1
                 VStack(alignment: .leading, spacing: 6) {
-                    chart(pts, color: color, unit: unit).frame(height: 116)
+                    chart(pts, color: color, unit: unit).frame(height: 116).clipped()
                     stats(vals, lo: lo, hi: hi, unit: unit)
                 }
             } else if model.isDetailLoaded(entityID) {
@@ -36,20 +36,21 @@ struct SensorDetailView: View {
     }
 
     private func chart(_ pts: [HistoryPoint], color: Color, unit: String?) -> some View {
-        Chart {
+        let domain = yDomain(pts)   // clamp plotted values to it so an outlier rides the top edge
+        return Chart {              // instead of drawing out of the plot into the rows above
             ForEach(pts, id: \.date) { pt in
-                LineMark(x: .value("Time", pt.date), y: .value("Value", pt.value))
+                LineMark(x: .value("Time", pt.date), y: .value("Value", clamp(pt.value, domain)))
                     .foregroundStyle(color)
                     .lineStyle(StrokeStyle(lineWidth: 1.8, lineCap: .round, lineJoin: .round))
                     .interpolationMethod(.linear)
             }
             if let h = hover {
                 RuleMark(x: .value("Time", h.date)).foregroundStyle(.secondary.opacity(0.4))
-                PointMark(x: .value("Time", h.date), y: .value("Value", h.value))
+                PointMark(x: .value("Time", h.date), y: .value("Value", clamp(h.value, domain)))
                     .foregroundStyle(color).symbolSize(60)
             }
         }
-        .chartYScale(domain: yDomain(pts))
+        .chartYScale(domain: domain)
         .chartXAxis {
             AxisMarks(values: .stride(by: .hour, count: 6)) { _ in
                 AxisGridLine().foregroundStyle(.quaternary)
@@ -110,6 +111,9 @@ struct SensorDetailView: View {
     private func percentile(_ sorted: [Double], _ p: Double) -> Double {
         let i = Int((Double(sorted.count - 1) * p).rounded())
         return sorted[min(max(i, 0), sorted.count - 1)]
+    }
+    private func clamp(_ v: Double, _ r: ClosedRange<Double>) -> Double {
+        min(max(v, r.lowerBound), r.upperBound)
     }
 
     private func stats(_ vals: [Double], lo: Double, hi: Double, unit: String?) -> some View {
