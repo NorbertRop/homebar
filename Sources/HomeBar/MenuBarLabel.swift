@@ -7,7 +7,7 @@ struct MenuBarLabel: View {
     var body: some View {
         let _ = model.dataVersion   // re-render on data changes (MenuBarExtra won't track the nested store)
         let offline = model.offlineCount
-        let connected = model.connection == .authenticated
+        let connected = model.connection == .connected
         let tint: Color = offline > 0 ? .red : (connected ? .primary : .secondary)
 
         if let id = model.settings.menuBarEntityID, let s = model.entity(id) {

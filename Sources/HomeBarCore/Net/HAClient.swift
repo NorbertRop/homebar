@@ -12,11 +12,6 @@ public struct HistoryPoint: Sendable, Equatable {
 }
 
 public actor HAClient {
-    public enum ConnectionState: Sendable, Equatable {
-        case disconnected, connecting, authenticated, failed(String)
-    }
-
-    public private(set) var connectionState: ConnectionState = .disconnected
     public nonisolated let events: AsyncStream<StateChange>
 
     private let url: URL
@@ -24,7 +19,13 @@ public actor HAClient {
     private let transport: WebSocketTransport
     private let eventContinuation: AsyncStream<StateChange>.Continuation
     private var nextID = 1
-    private var pending: [Int: CheckedContinuation<JSONValue, Error>] = [:]
+
+    /// An in-flight request: its continuation plus the timer that fails it if no reply arrives.
+    private struct Pending {
+        let continuation: CheckedContinuation<JSONValue, Error>
+        let timer: Task<Void, Never>
+    }
+    private var pending: [Int: Pending] = [:]
     private var receiveTask: Task<Void, Never>?
 
     public init(url: URL, token: String, transport: WebSocketTransport) {
@@ -33,35 +34,28 @@ public actor HAClient {
     }
 
     public func connect(timeout: TimeInterval = 15) async throws {
-        connectionState = .connecting
-        do {
-            try await withThrowingTaskGroup(of: Void.self) { group in
-                group.addTask { [transport, token] in
-                    try await transport.connect()
-                    guard frameType(try await transport.receive()) == "auth_required" else {
-                        throw HAError.protocolError("expected auth_required")
-                    }
-                    try await transport.send(authFrame(token: token))
-                    guard frameType(try await transport.receive()) == "auth_ok" else {
-                        throw HAError.authFailed
-                    }
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { [transport, token] in
+                try await transport.connect()
+                guard frameType(try await transport.receive()) == "auth_required" else {
+                    throw HAError.protocolError("expected auth_required")
                 }
-                group.addTask {
-                    try await Task.sleep(for: .seconds(timeout))
-                    throw HAError.timeout
-                }
-                defer { group.cancelAll() }
-                do { try await group.next() }                  // first of handshake / timeout
-                catch {
-                    await transport.close()                    // unstick a handshake blocked on receive()
-                    throw error
+                try await transport.send(authFrame(token: token))
+                guard frameType(try await transport.receive()) == "auth_ok" else {
+                    throw HAError.authFailed
                 }
             }
-        } catch {
-            connectionState = .disconnected
-            throw error
+            group.addTask {
+                try await Task.sleep(for: .seconds(timeout))
+                throw HAError.timeout
+            }
+            defer { group.cancelAll() }
+            do { try await group.next() }                  // first of handshake / timeout
+            catch {
+                await transport.close()                    // unstick a handshake blocked on receive()
+                throw error
+            }
         }
-        connectionState = .authenticated
         startReceiveLoop()
     }
 
@@ -96,7 +90,7 @@ public actor HAClient {
     /// triggers a reconnect — this is how a connection that died during sleep is detected.
     public func ping() async throws {
         let id = nextID; nextID += 1
-        _ = try await sendAndWait(id: id, frame: pingFrame(id: id), timeout: 10)
+        _ = try await sendAndWait(id: id, frame: pingFrame(id: id), timeout: 8)
     }
 
     /// Numeric history samples for one entity over the last `hours`, oldest→newest.
@@ -118,7 +112,6 @@ public actor HAClient {
         await transport.close()
         failAllPending(HAError.notConnected)
         eventContinuation.finish()
-        connectionState = .disconnected
     }
 
     private func request(type: String) async throws -> JSONValue {
@@ -130,20 +123,26 @@ public actor HAClient {
     /// on a half-dead socket (e.g. after the Mac sleeps) would hang indefinitely.
     private func sendAndWait(id: Int, frame: String, timeout: TimeInterval = 12) async throws -> JSONValue {
         try await withCheckedThrowingContinuation { (c: CheckedContinuation<JSONValue, Error>) in
-            pending[id] = c
-            Task { try? await self.transport.send(frame) }
-            Task { [weak self] in
+            let timer = Task { [weak self] in
                 try? await Task.sleep(for: .seconds(timeout))
                 await self?.timedOut(id)
             }
+            pending[id] = Pending(continuation: c, timer: timer)
+            Task { try? await self.transport.send(frame) }
         }
     }
     /// A request got no reply in time — a strong signal the socket is dead. Fail it and tear the
     /// connection down so the connect loop reconnects.
     private func timedOut(_ id: Int) {
-        guard let c = pending.removeValue(forKey: id) else { return }
+        guard let c = take(id) else { return }
         c.resume(throwing: HAError.timeout)
         teardown(HAError.timeout)
+    }
+    /// Remove a pending request, cancelling its timeout timer, and return its continuation.
+    private func take(_ id: Int) -> CheckedContinuation<JSONValue, Error>? {
+        guard let p = pending.removeValue(forKey: id) else { return nil }
+        p.timer.cancel()
+        return p.continuation
     }
 
     private func startReceiveLoop() {
@@ -161,18 +160,17 @@ public actor HAClient {
         receiveTask?.cancel(); receiveTask = nil
         failAllPending(error)
         eventContinuation.finish()
-        connectionState = .disconnected
     }
 
     private func handle(_ frame: String) {
         guard let obj = try? HAJSON.makeDecoder().decode(JSONValue.self, from: Data(frame.utf8)) else { return }
         switch obj["type"]?.stringValue {
         case "result":
-            guard let id = obj["id"]?.intValue, let c = pending.removeValue(forKey: id) else { return }
+            guard let id = obj["id"]?.intValue, let c = take(id) else { return }
             if obj["success"]?.boolValue == true { c.resume(returning: obj["result"] ?? .null) }
             else { c.resume(throwing: HAError.serviceCallFailed(obj["error"]?["message"]?.stringValue ?? "unknown")) }
         case "pong":
-            if let id = obj["id"]?.intValue, let c = pending.removeValue(forKey: id) { c.resume(returning: .null) }
+            if let id = obj["id"]?.intValue, let c = take(id) { c.resume(returning: .null) }
         case "event":
             if let change = Self.parseStateChanged(obj) { eventContinuation.yield(change) }
         default: break
@@ -180,7 +178,7 @@ public actor HAClient {
     }
 
     private func failAllPending(_ error: Error) {
-        for (_, c) in pending { c.resume(throwing: error) }
+        for (_, p) in pending { p.timer.cancel(); p.continuation.resume(throwing: error) }
         pending.removeAll()
     }
 

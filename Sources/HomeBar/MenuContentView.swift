@@ -112,12 +112,26 @@ struct MenuContentView: View {
             Image(systemName: "house.fill").foregroundStyle(.tint)
             Text("HomeBar").font(.headline)
             Spacer()
-            Circle().frame(width: 6, height: 6)
-                .foregroundStyle(model.connection == .authenticated ? .green : .orange)
-            Text(model.connection == .authenticated ? "Connected" : "Reconnecting…")
-                .font(.caption).foregroundStyle(.secondary)
+            Circle().frame(width: 6, height: 6).foregroundStyle(statusColor)
+            Text(statusText).font(.caption).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 4)
+    }
+
+    private var statusColor: Color {
+        switch model.connection {
+        case .connected: .green
+        case .connecting, .reconnecting: .orange
+        case .authFailed: .red
+        }
+    }
+    private var statusText: String {
+        switch model.connection {
+        case .connected: "Connected"
+        case .connecting: "Connecting…"
+        case .reconnecting: "Reconnecting…"
+        case .authFailed: "Auth failed — check token"
+        }
     }
 
     private func sectionHeader(_ title: String) -> some View {

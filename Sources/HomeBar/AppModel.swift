@@ -2,10 +2,16 @@ import Foundation
 import HomeBarCore
 import Observation
 
+/// The connection lifecycle the menu surfaces. The model owns this outright — `HAClient` no
+/// longer keeps a second copy.
+enum ConnectionStatus: Equatable {
+    case connecting, connected, reconnecting, authFailed
+}
+
 @MainActor @Observable final class AppModel {
     let store = StateStore()
     var settings: Settings
-    var connection: HAClient.ConnectionState = .disconnected
+    var connection: ConnectionStatus = .connecting
     var offlineEntityIDs: Set<String> = []
     var offlineCount: Int { offlineEntityIDs.count }
     /// Bumped on every snapshot/delta. A direct observable property the menu reads so it
@@ -79,11 +85,12 @@ import Observation
               let ws = haWebSocketURL(from: base) else { return }
         var attempt = 0
         while !Task.isCancelled {
+            connection = attempt == 0 ? .connecting : .reconnecting
             let client = HAClient(url: ws, token: token, transport: URLSessionWebSocketTransport(url: ws))
             self.client = client
             do {
                 try await client.connect()
-                connection = .authenticated
+                connection = .connected
                 attempt = 0
                 store.registry = (try? await client.fetchRegistry()) ?? store.registry
                 let snapshot = try await client.getStates()
@@ -93,7 +100,7 @@ import Observation
                 try await client.subscribeStateChanges()
                 let ticker = Task { [weak self] in
                     while !Task.isCancelled {
-                        try? await Task.sleep(for: .seconds(30))
+                        try? await Task.sleep(for: .seconds(20))
                         self?.evaluateStaleness()
                         do { try await client.ping() }   // dead socket → teardown → reconnect
                         catch { return }
@@ -108,9 +115,14 @@ import Observation
                     evaluateStaleness()
                 }
                 ticker.cancel()
-            } catch { /* connection failed — retry with backoff below */ }
+            } catch HAError.authFailed {
+                connection = .authFailed
+                await client.disconnect()
+                return   // bad token — stop retrying; the user fixes it in Settings (which restarts)
+            } catch { /* transient — retry with backoff below */ }
             await client.disconnect()
-            connection = .disconnected
+            if Task.isCancelled { break }
+            connection = .reconnecting
             attempt += 1
             try? await Task.sleep(for: .seconds(min(30, pow(2, Double(min(attempt, 5))))))
         }
