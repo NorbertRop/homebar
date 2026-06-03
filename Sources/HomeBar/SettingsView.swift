@@ -9,19 +9,66 @@ struct SettingsView: View {
     @State private var testResult: String = ""
     @State private var search: String = ""
     @State private var launchAtLogin = false
+    @State private var tab: Tab = .connection
 
     var body: some View {
-        TabView {
-            connectionTab.tabItem { Label("Connection", systemImage: "network") }
-            favoritesTab.tabItem { Label("Favorites", systemImage: "star") }
-            entitiesTab.tabItem { Label("Entities", systemImage: "list.bullet") }
-            alertsTab.tabItem { Label("Alerts", systemImage: "bell") }
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                ForEach(Tab.allCases) { t in
+                    Button { tab = t } label: {
+                        VStack(spacing: 3) {
+                            Image(systemName: t.icon).font(.system(size: 17))
+                            Text(t.title).font(.caption)
+                        }
+                        .frame(width: 68, height: 46)
+                        .foregroundStyle(tab == t ? Color.accentColor : Color.secondary)
+                        .background(tab == t ? Color.accentColor.opacity(0.12) : Color.clear,
+                                    in: RoundedRectangle(cornerRadius: 7))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 6)
+            Divider()
+            content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(width: 460, height: 420)
+        .frame(width: 460, height: 460)
         .onAppear {
             urlString = model.settings.serverURL?.absoluteString ?? ""
             token = model.tokenStore.read() ?? ""
             launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch tab {
+        case .connection: connectionTab
+        case .favorites: favoritesTab
+        case .entities: entitiesTab
+        case .alerts: alertsTab
+        }
+    }
+
+    private enum Tab: String, CaseIterable, Identifiable {
+        case connection, favorites, entities, alerts
+        var id: Self { self }
+        var title: String {
+            switch self {
+            case .connection: "Connection"
+            case .favorites: "Favorites"
+            case .entities: "Entities"
+            case .alerts: "Alerts"
+            }
+        }
+        var icon: String {
+            switch self {
+            case .connection: "network"
+            case .favorites: "star"
+            case .entities: "list.bullet"
+            case .alerts: "bell"
+            }
         }
     }
 
