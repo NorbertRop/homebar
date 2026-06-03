@@ -104,3 +104,25 @@ private func states() throws -> [EntityState] {
     #expect(ordered(["c", "a", "b", "d"], by: ["b", "a"]) == ["b", "a", "c", "d"])
     #expect(ordered(["x", "y"], by: []) == ["x", "y"])   // no custom order → unchanged
 }
+
+@Test func entityVisibilityReportsTheRightReason() {
+    let registry = Registry(areas: [], devices: [], entities: [
+        EntityRegistryEntry(entityID: "sensor.uptime", entityCategory: "diagnostic"),
+    ])
+    func e(_ id: String, _ state: String = "on") -> EntityState {
+        EntityState(entityID: id, state: state, attributes: [:], lastChanged: .now, lastUpdated: .now)
+    }
+    var s = Settings(); s.hidden = ["sensor.manual"]; s.pinned = ["update.kept", "sensor.dead"]
+    func vis(_ id: String, _ state: String = "on") -> EntityVisibility {
+        entityVisibility(e(id, state), registry: registry, settings: s, disconnectedDevices: [])
+    }
+    #expect(vis("sensor.temp") == .shown)
+    #expect(vis("sensor.manual") == .hidden(.manual))
+    #expect(vis("update.firmware") == .hidden(.domain))      // not a dashboard domain
+    #expect(vis("update.kept") == .shown)                    // pinned overrides the domain filter
+    #expect(vis("sensor.uptime") == .hidden(.diagnostic))
+    #expect(vis("sensor.air", "unavailable") == .hidden(.offline))
+    // Pinned entity on a disconnected device still shows (pin wins over device-offline).
+    #expect(entityVisibility(e("sensor.dead"), registry: registry, settings: s,
+                             disconnectedDevices: ["dev1"]) == .shown)
+}

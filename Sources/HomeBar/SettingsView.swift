@@ -133,27 +133,44 @@ struct SettingsView: View {
     // MARK: - Entities
 
     private var entitiesTab: some View {
-        VStack(spacing: 0) {
+        let disconnected = disconnectedDeviceIDs(Array(model.store.entities.values),
+                                                 registry: model.store.registry, settings: model.settings)
+        return VStack(spacing: 0) {
             HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
                 TextField("Search entities", text: $search).textFieldStyle(.plain)
             }
             .padding(7).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
             .padding(.horizontal, 16).padding(.vertical, 10)
-            List(filteredEntities, id: \.entityID) { s in
-                HStack {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(s.friendlyName).lineLimit(1)
-                        Text(s.entityID).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
-                    Spacer(minLength: 8)
-                    Toggle("Pin", isOn: Binding(get: { model.isPinned(s.entityID) },
-                                                set: { _ in model.togglePin(s.entityID) }))
-                        .toggleStyle(.button).controlSize(.small)
-                    Toggle("Hide", isOn: binding(in: \.hidden, id: s.entityID))
-                        .toggleStyle(.button).controlSize(.small)
-                }
+            List(filteredEntities, id: \.entityID) { entityRow($0, disconnected: disconnected) }
+            Text("Hidden entities are filtered from the menu — Pin one to force it back.")
+                .font(.caption2).foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16).padding(.vertical, 7)
+        }
+    }
+
+    @ViewBuilder private func entityRow(_ s: EntityState, disconnected: Set<String>) -> some View {
+        let vis = entityVisibility(s, registry: model.store.registry, settings: model.settings,
+                                   disconnectedDevices: disconnected)
+        HStack {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(s.friendlyName).lineLimit(1)
+                Text(s.entityID).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
+            if case .hidden(let reason) = vis {
+                let warn = reason == .offline || reason == .deviceOffline
+                Text(reason.label).font(.caption2).fontWeight(.medium)
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .foregroundStyle(warn ? Color.orange : Color.secondary)
+                    .background((warn ? Color.orange : Color.secondary).opacity(0.15), in: Capsule())
+            }
+            Spacer(minLength: 8)
+            Toggle("Pin", isOn: Binding(get: { model.isPinned(s.entityID) },
+                                        set: { _ in model.togglePin(s.entityID) }))
+                .toggleStyle(.button).controlSize(.small)
+            Toggle("Hide", isOn: binding(in: \.hidden, id: s.entityID))
+                .toggleStyle(.button).controlSize(.small)
         }
     }
 

@@ -55,25 +55,54 @@ public struct GroupedEntities: Sendable, Equatable {
     public let unassigned: AreaSection
 }
 
+/// Whether an entity shows in the menu, or is hidden and why.
+public enum EntityVisibility: Sendable, Equatable {
+    case shown
+    case hidden(HideReason)
+}
+
+public enum HideReason: String, Sendable, Equatable {
+    case manual, deviceOffline, offline, diagnostic, domain
+    /// Short, user-facing badge text.
+    public var label: String {
+        switch self {
+        case .manual: "Hidden"
+        case .deviceOffline: "Device offline"
+        case .offline: "Offline"
+        case .diagnostic: "Diagnostic"
+        case .domain: "Filtered"
+        }
+    }
+}
+
+/// Devices whose connectivity sensor reports disconnected — hidden wholesale while offline-hiding
+/// is on, since their controls won't respond anyway.
+public func disconnectedDeviceIDs(_ entities: [EntityState], registry: Registry, settings: Settings) -> Set<String> {
+    guard settings.hideOffline else { return [] }
+    return Set(entities
+        .filter { $0.deviceClass == "connectivity" && $0.state == "off" }
+        .compactMap { registry.deviceID(for: $0.entityID) })
+}
+
+/// The single source of truth for the menu's filtering — also used by the Entities settings list
+/// to annotate what's hidden and why.
+public func entityVisibility(_ entity: EntityState, registry: Registry, settings: Settings,
+                             disconnectedDevices: Set<String>) -> EntityVisibility {
+    if settings.hidden.contains(entity.entityID) { return .hidden(.manual) }
+    if settings.pinned.contains(entity.entityID) { return .shown }   // pinned always shows
+    if let did = registry.deviceID(for: entity.entityID), disconnectedDevices.contains(did) { return .hidden(.deviceOffline) }
+    if !isUsefulDomain(entity.entityID) { return .hidden(.domain) }                          // noise domains
+    if !settings.showDiagnostic && registry.isDiagnostic(entity.entityID) { return .hidden(.diagnostic) }
+    if settings.hideOffline && !entity.isAvailable { return .hidden(.offline) }
+    return .shown
+}
+
 /// `entities` should exclude automations (the UI lists those separately).
 public func groupEntities(_ entities: [EntityState], registry: Registry,
                           settings: Settings) -> GroupedEntities {
-    // Devices whose connectivity sensor reports disconnected are dead weight — their
-    // controls won't respond — so hide the whole device while offline-hiding is on.
-    let disconnectedDevices: Set<String> = settings.hideOffline
-        ? Set(entities
-            .filter { $0.deviceClass == "connectivity" && $0.state == "off" }
-            .compactMap { registry.deviceID(for: $0.entityID) })
-        : []
-
-    let visible = entities.filter { e in
-        if settings.hidden.contains(e.entityID) { return false }
-        if settings.pinned.contains(e.entityID) { return true }   // pinned always shows
-        if let did = registry.deviceID(for: e.entityID), disconnectedDevices.contains(did) { return false }
-        if !isUsefulDomain(e.entityID) { return false }           // hide noise domains
-        if !settings.showDiagnostic && registry.isDiagnostic(e.entityID) { return false } // hide diagnostic/config
-        if settings.hideOffline && !e.isAvailable { return false } // hide offline by default
-        return true
+    let disconnectedDevices = disconnectedDeviceIDs(entities, registry: registry, settings: settings)
+    let visible = entities.filter {
+        entityVisibility($0, registry: registry, settings: settings, disconnectedDevices: disconnectedDevices) == .shown
     }
     let visibleIDs = Set(visible.map(\.entityID))
     let pinnedIDs = settings.pinned.filter { visibleIDs.contains($0) }   // keep the user's order
