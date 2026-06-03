@@ -182,10 +182,12 @@ struct MenuContentView: View {
                     .font(.caption).foregroundStyle(.red)
             }
             Spacer()
+            Button { model.checkForUpdates?() } label: { Image(systemName: "arrow.triangle.2.circlepath") }
+                .buttonStyle(.plain).foregroundStyle(.secondary).help("Check for Updates…")
             Button { showSettings() } label: { Image(systemName: "gearshape") }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .buttonStyle(.plain).foregroundStyle(.secondary).help("Settings")
             Button { NSApp.terminate(nil) } label: { Image(systemName: "power") }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .buttonStyle(.plain).foregroundStyle(.secondary).help("Quit HomeBar")
         }
         .padding(.horizontal, 4)
     }

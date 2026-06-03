@@ -1,9 +1,18 @@
 name: Release
 
 # Tag a commit to publish a build, e.g.:
-#   git tag v0.1.0 && git push origin v0.1.0
-# Produces a *draft* GitHub Release with HomeBar.zip attached for you to review,
+#   git tag v0.1.1 && git push origin v0.1.1
+# Produces a *draft* GitHub Release with the app zip attached for you to review,
 # fill in notes, and publish. Builds are ad-hoc signed (not notarized) for now.
+#
+# Sparkle auto-updates: set the repo secret SPARKLE_PRIVATE_KEY (your exported
+# EdDSA private key — see docs/RELEASING.md) and the workflow EdDSA-signs each
+# build and updates the committed appcast.xml, which the app reads from the raw
+# GitHub URL in Info.plist. Without that secret the appcast steps are skipped and
+# only the draft is produced — so the workflow never breaks before it's set up.
+#
+# Before tagging, bump CFBundleVersion AND CFBundleShortVersionString in
+# Sources/HomeBar/Info.plist — Sparkle compares CFBundleVersion to decide "newer".
 
 on:
   push:
@@ -17,6 +26,8 @@ jobs:
   release:
     name: Build & draft release
     runs-on: macos-latest
+    env:
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
     steps:
       - uses: actions/checkout@v5
 
@@ -31,12 +42,42 @@ jobs:
       - name: Build & bundle HomeBar.app
         run: bash Scripts/package-app.sh release
 
-      - name: Zip app
-        run: ditto -c -k --sequesterRsrc --keepParent build/HomeBar.app build/HomeBar.zip
+      - name: Package versioned zip
+        id: pkg
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent build/HomeBar.app "dist/HomeBar-$VERSION.zip"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "zip=dist/HomeBar-$VERSION.zip" >> "$GITHUB_OUTPUT"
 
       - name: Draft release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/HomeBar.zip
+          files: ${{ steps.pkg.outputs.zip }}
           draft: true
           generate_release_notes: true
+
+      # EdDSA-sign the build and commit the updated appcast to main, so the feed
+      # (Info.plist SUFeedURL) advertises this version. Skipped until the secret exists.
+      - name: Update Sparkle appcast
+        if: env.SPARKLE_PRIVATE_KEY != ''
+        run: |
+          GEN="$(find .build/artifacts -name generate_appcast -path '*Sparkle*' | head -1)"
+          echo "$SPARKLE_PRIVATE_KEY" | "$GEN" --ed-key-file - \
+            --download-url-prefix "https://github.com/${{ github.repository }}/releases/download/${GITHUB_REF_NAME}/" \
+            -o /tmp/appcast.xml \
+            dist
+          echo "Generated appcast:"; cat /tmp/appcast.xml
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B main origin/main
+          cp /tmp/appcast.xml appcast.xml
+          git add appcast.xml
+          git diff --cached --quiet || git commit -m "chore(release): appcast for ${GITHUB_REF_NAME}"
+          git push origin HEAD:main
+
+      - name: Note when Sparkle is not configured
+        if: env.SPARKLE_PRIVATE_KEY == ''
+        run: echo "::notice::SPARKLE_PRIVATE_KEY not set — skipped appcast; auto-updates stay inactive until you add it (see docs/RELEASING.md)."

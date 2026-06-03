@@ -11,6 +11,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [
         .target(name: "HomeBarCore"),
@@ -19,7 +20,11 @@ let package = Package(
             dependencies: ["HomeBarCore"],
             resources: [.copy("Fixtures")]
         ),
-        .executableTarget(name: "HomeBar", dependencies: ["HomeBarCore"], exclude: ["Info.plist"]),
+        .executableTarget(
+            name: "HomeBar",
+            dependencies: ["HomeBarCore", .product(name: "Sparkle", package: "Sparkle")],
+            exclude: ["Info.plist"]
+        ),
         .executableTarget(
             name: "homebarcli",
             dependencies: [

@@ -1,4 +1,5 @@
 import SwiftUI
+import Sparkle
 
 @main
 struct HomeBarApp: App {
@@ -20,9 +21,14 @@ struct HomeBarApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
     private lazy var settingsWindow = SettingsWindow(model: model)
+    // Sparkle drives auto-updates: background checks per Info.plist (SUEnableAutomaticChecks),
+    // plus the manual "Check for Updates…" menu item. Updates are EdDSA-verified, no Apple account.
+    private let updater = SPUStandardUpdaterController(startingUpdater: true,
+                                                       updaterDelegate: nil, userDriverDelegate: nil)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         model.start()
         model.presentSettings = { [weak self] in self?.settingsWindow.show() }
+        model.checkForUpdates = { [weak self] in self?.updater.checkForUpdates(nil) }
     }
 }

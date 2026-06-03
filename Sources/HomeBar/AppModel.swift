@@ -14,6 +14,8 @@ enum ConnectionStatus: Equatable {
     var connection: ConnectionStatus = .connecting
     /// Shows the (AppKit-managed) Settings window; wired up by the app delegate.
     var presentSettings: (() -> Void)?
+    /// Triggers a Sparkle update check; wired up by the app delegate.
+    var checkForUpdates: (() -> Void)?
     var offlineEntityIDs: Set<String> = []
     var offlineCount: Int { offlineEntityIDs.count }
     /// Bumped on every snapshot/delta. A direct observable property the menu reads so it

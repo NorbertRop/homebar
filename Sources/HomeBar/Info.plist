@@ -12,6 +12,14 @@
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSUserNotificationsUsageDescription</key><string>Notify when a sensor goes offline.</string>
+  <!-- Sparkle auto-updates. Updates are verified with the EdDSA public key below
+       (independent of Apple code signing); the private key lives in the maintainer's
+       Keychain / CI secret. The feed must be publicly reachable — works once the repo
+       is public (or appcast.xml is hosted somewhere Sparkle can GET it). -->
+  <key>SUFeedURL</key><string>https://raw.githubusercontent.com/NorbertRop/homebar/main/appcast.xml</string>
+  <key>SUPublicEDKey</key><string>eNbyK6iFySOb8ED2BCmc8JjVK+kLU1bp9Z/alURvvX0=</string>
+  <key>SUEnableAutomaticChecks</key><true/>
+  <key>SUScheduledCheckInterval</key><integer>86400</integer>
   <!-- Home Assistant is typically self-hosted over plain http/ws on a LAN or VPN,
        so allow insecure loads. -->
   <key>NSAppTransportSecurity</key>

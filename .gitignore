@@ -13,4 +13,9 @@ DerivedData/
 
 # Build output
 build/
+dist/
 *.app
+
+# Sparkle: never commit the private signing key
+*.private-key
+sparkle_private_key*
