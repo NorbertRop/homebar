@@ -41,14 +41,18 @@ Re-export any time (asks the Keychain for permission):
 
 ## Caveats
 
-- **The feed must be publicly reachable.** `SUFeedURL` points at
-  `raw.githubusercontent.com/NorbertRop/homebar/main/appcast.xml`. While the repo is
-  **private**, that URL 404s, so auto-updates won't fetch until the repo is public (or the
-  appcast is hosted somewhere public). The plumbing is ready either way.
-- **Un-notarized.** Builds are ad-hoc signed, so first launch needs a one-time
-  right-click → Open (or System Settings → Privacy & Security → Open Anyway). Sparkle
-  de-quarantines the updates it installs, so later updates are smooth. To remove the
-  first-launch step entirely, add Developer ID + notarization (needs an Apple account).
+- **The feed is public.** `SUFeedURL` points at
+  `raw.githubusercontent.com/NorbertRop/homebar/main/appcast.xml`; the repo is public, so it
+  resolves. (Make the repo private again and that URL 404s — updates can't fetch.)
+- **Un-notarized → updates are blocked on modern macOS.** Builds are ad-hoc signed (no
+  Developer ID / Team ID). On macOS 15+/26, Gatekeeper **blocks or warns** on an un-notarized
+  Sparkle update and on every fresh install (`spctl: rejected`) — even though Sparkle's own
+  download / verify / swap works. Because of that, **`SUEnableAutomaticChecks` is `false`**:
+  the app won't auto-offer an update the OS would block. Manual "Check for Updates" still
+  works (reports "up to date" when current). To get real, silent auto-updates: add **Developer
+  ID signing + notarization** (Apple Developer account, $99/yr), then flip
+  `SUEnableAutomaticChecks` to `true`. Note the local build is `CFBundleVersion 3`, so the
+  first notarized release must be **≥ 4** for installs to see it as newer.
 - **Apple Silicon only.** `swift build` produces an arm64 binary, so the appcast marks the
   update `arm64`-only and Intel Macs won't be offered it. Build a universal binary
   (`arm64` + `x86_64`) to cover Intel.
