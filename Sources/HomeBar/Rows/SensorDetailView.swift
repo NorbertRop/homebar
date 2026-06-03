@@ -21,7 +21,7 @@ struct SensorDetailView: View {
                     chart(pts, color: color, unit: unit).frame(height: 116)
                     stats(vals, lo: lo, hi: hi, unit: unit)
                 }
-            } else if model.isHistoryLoaded(entityID) {
+            } else if model.isDetailLoaded(entityID) {
                 Text("No history available").font(.caption).foregroundStyle(.secondary)
                     .frame(height: 80).frame(maxWidth: .infinity)
             } else {

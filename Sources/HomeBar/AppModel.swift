@@ -12,11 +12,13 @@ import Observation
     /// re-renders on data changes — MenuBarExtra content doesn't reliably track the nested
     /// @Observable `store.entities`.
     var dataVersion = 0
-    /// Cached ~24h timestamped history per sensor, fetched lazily when a row appears and reused
-    /// for both the inline sparkline and the expanded detail chart (so expanding is instant).
-    var histories: [String: [HistoryPoint]] = [:]
+    /// Recent (~6h) sparkline values per sensor, fetched lightly when a row appears.
+    var histories: [String: [Double]] = [:]
     private var historyFetchedAt: [String: Date] = [:]
-    private(set) var historyLoaded: Set<String> = []
+    /// Full (~24h) timestamped history for the expanded detail chart, fetched on click.
+    var detailHistory: [String: [HistoryPoint]] = [:]
+    private var detailFetchedAt: [String: Date] = [:]
+    private(set) var detailLoaded: Set<String> = []
 
     let tokenStore: TokenStore
     private let notifier: UserNotificationNotifier
@@ -167,29 +169,41 @@ import Observation
         saveSettings(); dataVersion &+= 1
     }
 
-    /// Fetch ~24h of history once a numeric sensor's row appears (cached ~5 min); reused for the
-    /// sparkline and, when expanded, the detail chart — so expanding shows instantly.
+    /// Light ~6h fetch for the inline sparkline when a numeric sensor's row appears (cached ~5 min).
     func loadHistory(_ id: String) {
         if let t = historyFetchedAt[id], Date().timeIntervalSince(t) < 300 { return }
         guard let client else { return }
         historyFetchedAt[id] = Date()
         Task {
             do {
-                let pts = try await client.history(entityID: id, hours: 24)
-                if pts.count > 1 { histories[id] = Self.downsample(pts, to: 240) }
-                historyLoaded.insert(id)
+                let pts = try await client.history(entityID: id, hours: 6)
+                if pts.count > 1 { histories[id] = Self.downsample(pts.map(\.value), to: 48); dataVersion &+= 1 }
             } catch {
-                historyFetchedAt[id] = .distantPast   // a failed/timed-out fetch should retry, not stick
+                historyFetchedAt[id] = .distantPast   // failed fetch → allow retry
+            }
+        }
+    }
+    func sparkline(for id: String) -> [Double]? { histories[id] }
+
+    /// Full ~24h fetch for the expanded detail chart, on demand when a sensor is clicked (cached
+    /// ~2 min). It's fast (<0.2s), so there's no need to prefetch it for every row.
+    func loadDetail(_ id: String) {
+        if let t = detailFetchedAt[id], Date().timeIntervalSince(t) < 120 { return }
+        guard let client else { return }
+        detailFetchedAt[id] = Date()
+        Task {
+            do {
+                let pts = try await client.history(entityID: id, hours: 24)
+                if pts.count > 1 { detailHistory[id] = Self.downsample(pts, to: 240) }
+                detailLoaded.insert(id)
+            } catch {
+                detailFetchedAt[id] = .distantPast   // failed/timed-out fetch → retry, don't stick
             }
             dataVersion &+= 1
         }
     }
-    /// Recent values for the inline sparkline (thinned from the cached history).
-    func sparkline(for id: String) -> [Double]? {
-        histories[id].map { Self.downsample($0.map(\.value), to: 48) }
-    }
-    func detail(for id: String) -> [HistoryPoint]? { histories[id] }
-    func isHistoryLoaded(_ id: String) -> Bool { historyLoaded.contains(id) }
+    func detail(for id: String) -> [HistoryPoint]? { detailHistory[id] }
+    func isDetailLoaded(_ id: String) -> Bool { detailLoaded.contains(id) }
 
     /// Evenly thin a series to at most `n` points so the chart stays cheap.
     private static func downsample<T>(_ xs: [T], to n: Int) -> [T] {
