@@ -38,6 +38,17 @@ enum ConnectionStatus: Equatable {
     static let cacheURL = Settings.defaultURL().deletingLastPathComponent()
         .appendingPathComponent("state-cache.json")
 
+    /// Tuning knobs, grouped so they're easy to find and adjust.
+    private enum Tuning {
+        static let heartbeat: TimeInterval = 20          // ping cadence to detect a dead socket
+        static let maxBackoff: TimeInterval = 30         // reconnect backoff ceiling
+        static let cacheWriteThrottle: TimeInterval = 5  // min seconds between state-cache disk writes
+        static let sparklineTTL: TimeInterval = 300      // reuse a sensor's 6h history this long
+        static let detailTTL: TimeInterval = 120         // reuse a sensor's 24h history this long
+        static let sparklinePoints = 48                  // down-sample target for the inline sparkline
+        static let detailPoints = 240                    // down-sample target for the 24h detail chart
+    }
+
     init(tokenStore: TokenStore = FileTokenStore()) {
         self.tokenStore = tokenStore
         let n = UserNotificationNotifier()
@@ -80,6 +91,7 @@ enum ConnectionStatus: Equatable {
     func saveSettings() {
         try? settings.save(to: Settings.defaultURL())
         notifier.enabled = settings.notifyOffline
+        dataVersion &+= 1   // settings change the menu's filtering/order — refresh it
     }
 
     private func connectLoop() async {
@@ -102,7 +114,7 @@ enum ConnectionStatus: Equatable {
                 try await client.subscribeStateChanges()
                 let ticker = Task { [weak self] in
                     while !Task.isCancelled {
-                        try? await Task.sleep(for: .seconds(20))
+                        try? await Task.sleep(for: .seconds(Tuning.heartbeat))
                         self?.evaluateStaleness()
                         do { try await client.ping() }   // dead socket → teardown → reconnect
                         catch { return }
@@ -111,7 +123,7 @@ enum ConnectionStatus: Equatable {
                 for await change in client.events {
                     store.apply(change)
                     dataVersion &+= 1
-                    if Date().timeIntervalSince(lastCacheSave) > 5 {   // throttle disk writes off the main thread's hot path
+                    if Date().timeIntervalSince(lastCacheSave) > Tuning.cacheWriteThrottle {
                         try? store.saveCache(to: Self.cacheURL); lastCacheSave = Date()
                     }
                     evaluateStaleness()
@@ -126,7 +138,7 @@ enum ConnectionStatus: Equatable {
             if Task.isCancelled { break }
             connection = .reconnecting
             attempt += 1
-            try? await Task.sleep(for: .seconds(min(30, pow(2, Double(min(attempt, 5))))))
+            try? await Task.sleep(for: .seconds(min(Tuning.maxBackoff, pow(2, Double(min(attempt, 5))))))
         }
     }
 
@@ -156,11 +168,11 @@ enum ConnectionStatus: Equatable {
     func togglePin(_ id: String) {
         if let i = settings.pinned.firstIndex(of: id) { settings.pinned.remove(at: i) }
         else { settings.pinned.append(id); settings.hidden.remove(id) }
-        saveSettings(); dataVersion &+= 1
+        saveSettings()
     }
     func hide(_ id: String) {
         settings.hidden.insert(id); settings.pinned.removeAll { $0 == id }
-        saveSettings(); dataVersion &+= 1
+        saveSettings()
     }
     func hideDevice(of id: String) {
         guard let did = store.registry.deviceID(for: id) else { return hide(id) }
@@ -168,7 +180,7 @@ enum ConnectionStatus: Equatable {
             settings.hidden.insert(e)
         }
         settings.pinned.removeAll { store.registry.deviceID(for: $0) == did }
-        saveSettings(); dataVersion &+= 1
+        saveSettings()
     }
 
     // Favorites reordering. Move Up/Down (menu, accessible) + .onMove (Settings list).
@@ -180,10 +192,10 @@ enum ConnectionStatus: Equatable {
         guard let i = settings.pinned.firstIndex(of: id) else { return }
         let j = up ? i - 1 : i + 1
         guard settings.pinned.indices.contains(j) else { return }
-        settings.pinned.swapAt(i, j); saveSettings(); dataVersion &+= 1
+        settings.pinned.swapAt(i, j); saveSettings()
     }
     func moveFavorites(from: IndexSet, to: Int) {
-        settings.pinned.move(fromOffsets: from, toOffset: to); saveSettings(); dataVersion &+= 1
+        settings.pinned.move(fromOffsets: from, toOffset: to); saveSettings()
     }
     /// Reorder a non-pinned entity within its displayed list, recording the new order.
     func reorder(_ displayed: [String], moving id: String, up: Bool) {
@@ -192,18 +204,18 @@ enum ConnectionStatus: Equatable {
         guard displayed.indices.contains(j) else { return }
         var list = displayed; list.swapAt(i, j)
         settings.order = settings.order.filter { !list.contains($0) } + list
-        saveSettings(); dataVersion &+= 1
+        saveSettings()
     }
 
     /// Light ~6h fetch for the inline sparkline when a numeric sensor's row appears (cached ~5 min).
     func loadHistory(_ id: String) {
-        if let t = historyFetchedAt[id], Date().timeIntervalSince(t) < 300 { return }
+        if let t = historyFetchedAt[id], Date().timeIntervalSince(t) < Tuning.sparklineTTL { return }
         guard let client else { return }
         historyFetchedAt[id] = Date()
         Task {
             do {
                 let pts = try await client.history(entityID: id, hours: 6)
-                if pts.count > 1 { histories[id] = Self.downsample(pts.map(\.value), to: 48); dataVersion &+= 1 }
+                if pts.count > 1 { histories[id] = Self.downsample(pts.map(\.value), to: Tuning.sparklinePoints); dataVersion &+= 1 }
             } catch {
                 historyFetchedAt[id] = .distantPast   // failed fetch → allow retry
             }
@@ -214,13 +226,13 @@ enum ConnectionStatus: Equatable {
     /// Full ~24h fetch for the expanded detail chart, on demand when a sensor is clicked (cached
     /// ~2 min). It's fast (<0.2s), so there's no need to prefetch it for every row.
     func loadDetail(_ id: String) {
-        if let t = detailFetchedAt[id], Date().timeIntervalSince(t) < 120 { return }
+        if let t = detailFetchedAt[id], Date().timeIntervalSince(t) < Tuning.detailTTL { return }
         guard let client else { return }
         detailFetchedAt[id] = Date()
         Task {
             do {
                 let pts = try await client.history(entityID: id, hours: 24)
-                if pts.count > 1 { detailHistory[id] = Self.downsample(pts, to: 240) }
+                if pts.count > 1 { detailHistory[id] = Self.downsample(pts, to: Tuning.detailPoints) }
                 detailLoaded.insert(id)
             } catch {
                 detailFetchedAt[id] = .distantPast   // failed/timed-out fetch → retry, don't stick

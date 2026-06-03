@@ -9,7 +9,7 @@ struct SwitchRow: View {
     var body: some View {
         if let s = model.entity(entityID) {
             Toggle(isOn: Binding(
-                get: { s.state == "on" },
+                get: { s.isOn },
                 set: { _ in model.toggle(entityID) }
             )) {
                 HStack {

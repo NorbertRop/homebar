@@ -1,6 +1,9 @@
 import SwiftUI
 import HomeBarCore
 
+/// Non-numeric values longer than this render as a subtitle under the name instead of inline.
+private let longTextValueThreshold = 18
+
 struct SensorRow: View {
     let model: AppModel
     let entityID: String
@@ -32,7 +35,7 @@ struct SensorRow: View {
         let value = displayValue(s)
         // A long, non-numeric value (e.g. a status message) reads as a subtitle under the name
         // instead of squeezing the name to fit a full-width right-aligned sentence.
-        let longText = Double(s.state) == nil && s.deviceClass != "timestamp" && value.count > 18
+        let longText = Double(s.state) == nil && s.deviceClass != "timestamp" && value.count > longTextValueThreshold
         return HStack(alignment: longText ? .top : .center, spacing: 8) {
             Image(systemName: sensorSymbol(s.deviceClass)).frame(width: 18).foregroundStyle(.secondary)
             if longText {
@@ -88,11 +91,11 @@ struct SensorRow: View {
 
     private func binaryLabel(_ s: EntityState) -> String {
         switch s.deviceClass {
-        case "door", "window", "opening": s.state == "on" ? "Open" : "Closed"
-        case "motion": s.state == "on" ? "Motion" : "Clear"
-        case "moisture": s.state == "on" ? "Wet" : "Dry"
-        case "connectivity": s.state == "on" ? "Connected" : "Disconnected"
-        default: s.state == "on" ? "On" : "Off"
+        case "door", "window", "opening": s.isOn ? "Open" : "Closed"
+        case "motion": s.isOn ? "Motion" : "Clear"
+        case "moisture": s.isOn ? "Wet" : "Dry"
+        case "connectivity": s.isOn ? "Connected" : "Disconnected"
+        default: s.isOn ? "On" : "Off"
         }
     }
 }

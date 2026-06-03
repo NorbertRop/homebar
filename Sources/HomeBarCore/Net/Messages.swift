@@ -12,13 +12,13 @@ public struct ServiceCall: Sendable, Equatable {
 
 public enum HACommand {
     public static func toggle(_ entityID: String) -> ServiceCall {
-        ServiceCall(domain: domain(entityID), service: "toggle", data: [:], target: entityID)
+        ServiceCall(domain: entityDomain(entityID), service: "toggle", data: [:], target: entityID)
     }
     public static func turnOn(_ entityID: String) -> ServiceCall {
-        ServiceCall(domain: domain(entityID), service: "turn_on", data: [:], target: entityID)
+        ServiceCall(domain: entityDomain(entityID), service: "turn_on", data: [:], target: entityID)
     }
     public static func turnOff(_ entityID: String) -> ServiceCall {
-        ServiceCall(domain: domain(entityID), service: "turn_off", data: [:], target: entityID)
+        ServiceCall(domain: entityDomain(entityID), service: "turn_off", data: [:], target: entityID)
     }
     public static func setLight(_ entityID: String, on: Bool, brightnessPercent: Int?,
                                 rgb: RGB?, colorTempKelvin: Int?) -> ServiceCall {
@@ -47,9 +47,6 @@ public enum HACommand {
     public static func armAutomation(_ entityID: String, armed: Bool) -> ServiceCall {
         ServiceCall(domain: "automation", service: armed ? "turn_on" : "turn_off",
                     data: [:], target: entityID)
-    }
-    private static func domain(_ entityID: String) -> String {
-        String(entityID.split(separator: ".").first ?? "")
     }
 }
 

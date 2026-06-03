@@ -35,7 +35,7 @@ struct SettingsView: View {
             Divider()
             content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .frame(width: 460, height: 460)
+        .frame(width: settingsWindowSize.width, height: settingsWindowSize.height)
         .onAppear {
             urlString = model.settings.serverURL?.absoluteString ?? ""
             token = model.tokenStore.read() ?? ""
@@ -195,7 +195,7 @@ struct SettingsView: View {
                 model.settings.shown.insert(id)            // still hidden by a rule → force-show
             }
         }
-        model.saveSettings(); model.dataVersion &+= 1
+        model.saveSettings()
     }
 
     // MARK: - Alerts

@@ -1,5 +1,9 @@
 import SwiftUI
 
+/// Min seconds between live updates pushed while dragging a control — fast enough to feel live,
+/// slow enough not to flood the device. Shared by HASlider and HueSlider.
+let liveControlThrottle: TimeInterval = 0.2
+
 /// A Slider for a value that is also driven by live Home Assistant state.
 ///
 /// Drags a local copy so HA's echoed state never snaps the thumb. Sends **throttled**
@@ -14,8 +18,6 @@ struct HASlider: View {
     @State private var local: Double
     @State private var editing = false
     @State private var lastSent = Date.distantPast
-
-    private let throttle: TimeInterval = 0.2
 
     init(value: Double, in range: ClosedRange<Double>, onCommit: @escaping (Double) -> Void) {
         self.value = value
@@ -39,7 +41,7 @@ struct HASlider: View {
 
     private func send(_ v: Double, force: Bool) {
         let now = Date()
-        if force || now.timeIntervalSince(lastSent) >= throttle {
+        if force || now.timeIntervalSince(lastSent) >= liveControlThrottle {
             lastSent = now
             onCommit(v)
         }

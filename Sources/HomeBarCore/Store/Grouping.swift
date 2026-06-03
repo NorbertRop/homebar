@@ -9,8 +9,12 @@ public let usefulDomains: Set<String> = [
 ]
 
 public func isUsefulDomain(_ entityID: String) -> Bool {
-    usefulDomains.contains(String(entityID.split(separator: ".").first ?? ""))
+    usefulDomains.contains(entityDomain(entityID))
 }
+
+/// A device's entities only cluster into a card once it has at least this many shown — a lone
+/// reading just sits loose in its area.
+let minDeviceCardMembers = 2
 
 /// Interactive domains. These are kept OUT of device cards so they can cluster as
 /// "controls", separate from the device's sensor readings.
@@ -20,7 +24,7 @@ public let controlDomains: Set<String> = [
 ]
 
 public func isControlDomain(_ entityID: String) -> Bool {
-    controlDomains.contains(String(entityID.split(separator: ".").first ?? ""))
+    controlDomains.contains(entityDomain(entityID))
 }
 
 /// Sort `ids` by a user-defined `order`: ids present in `order` come first, in that
@@ -124,7 +128,7 @@ public func groupEntities(_ entities: [EntityState], registry: Registry,
         }
         var cards: [DeviceCard] = []
         for (did, members) in byDevice {
-            if members.count >= 2 {
+            if members.count >= minDeviceCardMembers {
                 cards.append(DeviceCard(deviceID: did,
                                         name: registry.deviceName(for: members[0].entityID) ?? did,
                                         entityIDs: members.map(\.entityID).sorted()))

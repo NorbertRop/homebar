@@ -26,10 +26,7 @@ struct LightRow: View {
                         if let b = light.brightnessPercent {
                             HStack(spacing: 8) {
                                 Image(systemName: "sun.max.fill").font(.caption).foregroundStyle(.secondary).frame(width: 16)
-                                HASlider(value: Double(b), in: 1...100) { v in
-                                    model.perform(HACommand.setLight(entityID, on: true,
-                                        brightnessPercent: Int(v), rgb: nil, colorTempKelvin: nil))
-                                }
+                                HASlider(value: Double(b), in: 1...100) { v in adjust(Int(v)) }
                                 Text("\(b)%").font(.caption).foregroundStyle(.secondary)
                                     .monospacedDigit().frame(width: 34, alignment: .trailing)
                             }
@@ -40,8 +37,7 @@ struct LightRow: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "thermometer.sun").font(.caption).foregroundStyle(.orange).frame(width: 16)
                                 HASlider(value: Double(light.colorTempKelvin ?? minK), in: Double(minK)...Double(maxK)) { k in
-                                    model.perform(HACommand.setLight(entityID, on: true,
-                                        brightnessPercent: light.brightnessPercent, rgb: nil, colorTempKelvin: Int(k)))
+                                    adjust(light.brightnessPercent, colorTemp: Int(k))
                                 }
                                 Image(systemName: "thermometer.snowflake").font(.caption).foregroundStyle(.blue).frame(width: 16)
                             }
@@ -50,15 +46,13 @@ struct LightRow: View {
                             HStack(spacing: 8) {
                                 Image(systemName: "paintpalette.fill").font(.caption).foregroundStyle(.secondary).frame(width: 16)
                                 HueSlider(hue: light.rgb.map(rgbToHue) ?? 0) { h in
-                                    model.perform(HACommand.setLight(entityID, on: true,
-                                        brightnessPercent: light.brightnessPercent, rgb: rgbFromHue(h), colorTempKelvin: nil))
+                                    adjust(light.brightnessPercent, rgb: rgbFromHue(h))
                                 }
                             }
                             HStack(spacing: 7) {
                                 ForEach(lightPresets) { p in
                                     Button {
-                                        model.perform(HACommand.setLight(entityID, on: true,
-                                            brightnessPercent: light.brightnessPercent, rgb: p.rgb, colorTempKelvin: nil))
+                                        adjust(light.brightnessPercent, rgb: p.rgb)
                                     } label: {
                                         Circle().fill(p.color).frame(width: 18, height: 18)
                                             .overlay(Circle().strokeBorder(.primary.opacity(0.15), lineWidth: 1))
@@ -75,5 +69,11 @@ struct LightRow: View {
                 }
             }
         }
+    }
+
+    /// Turn the light on and apply a change, preserving whatever isn't being set.
+    private func adjust(_ brightnessPercent: Int?, rgb: RGB? = nil, colorTemp: Int? = nil) {
+        model.perform(HACommand.setLight(entityID, on: true,
+            brightnessPercent: brightnessPercent, rgb: rgb, colorTempKelvin: colorTemp))
     }
 }

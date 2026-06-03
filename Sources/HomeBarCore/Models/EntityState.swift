@@ -28,4 +28,5 @@ public struct EntityState: Sendable, Equatable, Codable, Identifiable {
     public var unit: String? { attributes["unit_of_measurement"]?.stringValue }
     public var deviceClass: String? { attributes["device_class"]?.stringValue }
     public var isAvailable: Bool { state != "unavailable" && state != "unknown" }
+    public var isOn: Bool { state == "on" }
 }

@@ -2,8 +2,7 @@ public enum Domain: String, Sendable, CaseIterable {
     case sensor, binarySensor, switchType, light, climate, automation, scene, script, vacuum, other
 
     public init(entityID: String) {
-        let prefix = entityID.split(separator: ".").first.map(String.init) ?? ""
-        switch prefix {
+        switch entityDomain(entityID) {
         case "sensor": self = .sensor
         case "binary_sensor": self = .binarySensor
         case "switch": self = .switchType
@@ -16,4 +15,9 @@ public enum Domain: String, Sendable, CaseIterable {
         default: self = .other
         }
     }
+}
+
+/// The domain part of an entity_id ("light.desk" → "light"). The single place this split lives.
+public func entityDomain(_ entityID: String) -> String {
+    String(entityID.split(separator: ".").first ?? "")
 }

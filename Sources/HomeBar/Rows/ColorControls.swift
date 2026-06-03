@@ -13,7 +13,6 @@ struct HueSlider: View {
     @State private var local: Double
     @State private var editing = false
     @State private var lastSent = Date.distantPast
-    private let throttle: TimeInterval = 0.2
     private let knob: CGFloat = 16
 
     init(hue: Double, onChange: @escaping (Double) -> Void) {
@@ -56,7 +55,7 @@ struct HueSlider: View {
 
     private func send(_ v: Double, force: Bool) {
         let now = Date()
-        if force || now.timeIntervalSince(lastSent) >= throttle {
+        if force || now.timeIntervalSince(lastSent) >= liveControlThrottle {
             lastSent = now
             onChange(v)
         }

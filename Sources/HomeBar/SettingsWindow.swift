@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+let settingsWindowSize = CGSize(width: 460, height: 460)
+
 /// Hosts `SettingsView` in a window we fully control, so its placement is set **before** it's ever
 /// shown. The SwiftUI `Settings` scene orders its window on screen first — on the app's desktop
 /// Space, switching you off a full-screen app — before any view modifier can reach it. Owning the
@@ -25,7 +27,7 @@ final class SettingsWindow {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 460),
+        let window = NSWindow(contentRect: NSRect(origin: .zero, size: settingsWindowSize),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "HomeBar Settings"
         window.isReleasedWhenClosed = false               // reuse across opens

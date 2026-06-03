@@ -14,7 +14,7 @@ public struct LightState: Sendable, Equatable {
     public let maxColorTempKelvin: Int?
 
     public init(from s: EntityState) {
-        isOn = s.state == "on"
+        isOn = s.isOn
         if let b = s.attributes["brightness"]?.intValue {
             brightnessPercent = Int((Double(b) / 255.0 * 100).rounded())
         } else { brightnessPercent = nil }

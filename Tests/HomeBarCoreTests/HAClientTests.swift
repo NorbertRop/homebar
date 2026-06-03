@@ -57,3 +57,15 @@ private let authInvalid = #"{"type":"auth_invalid","message":"bad"}"#
     #expect(change?.entityID == "light.x")
     #expect(change?.newState?.state == "on")
 }
+
+@Test func pingRoundTrips() async throws {
+    let t = FakeWebSocketTransport()
+    let client = HAClient(url: URL(string: "ws://h")!, token: "tok", transport: t)
+    await t.enqueue(authRequired); await t.enqueue(authOK)
+    try await client.connect()
+
+    async let pong: Void = client.ping()
+    try await Task.sleep(for: .milliseconds(20))
+    await t.enqueue(#"{"id":1,"type":"pong"}"#)
+    try await pong   // resolves on the matching pong; would throw .timeout otherwise
+}

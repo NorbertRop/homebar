@@ -12,7 +12,7 @@ struct AutomationRow: View {
                 Spacer()
                 Button("Run") { model.perform(HACommand.runAutomation(entityID)) }
                     .buttonStyle(.bordered).controlSize(.small)
-                Toggle("", isOn: Binding(get: { s.state == "on" },
+                Toggle("", isOn: Binding(get: { s.isOn },
                     set: { model.perform(HACommand.armAutomation(entityID, armed: $0)) }))
                     .toggleStyle(.switch).labelsHidden()
             }
