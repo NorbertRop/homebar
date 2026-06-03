@@ -143,10 +143,6 @@ struct SettingsView: View {
             .padding(7).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
             .padding(.horizontal, 16).padding(.vertical, 10)
             List(filteredEntities, id: \.entityID) { entityRow($0, disconnected: disconnected) }
-            Text("Auto-hidden items (offline, diagnostic, …) show Hide on — click Hide to reveal one.")
-                .font(.caption2).foregroundStyle(.tertiary)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 16).padding(.vertical, 7)
         }
     }
 
@@ -167,37 +163,39 @@ struct SettingsView: View {
                     .background((warn ? Color.orange : Color.secondary).opacity(0.15), in: Capsule())
             }
             Spacer(minLength: 8)
-            Toggle("Pin", isOn: Binding(get: { model.isPinned(s.entityID) },
-                                        set: { _ in model.togglePin(s.entityID) }))
-                .toggleStyle(.button).controlSize(.small)
-            Toggle("Hide", isOn: hideBinding(s, disconnected))
-                .toggleStyle(.button).controlSize(.small)
+            pillToggle("Pin", on: model.isPinned(s.entityID)) { model.togglePin(s.entityID) }
+            pillToggle("Hide", on: vis != .shown) { setHide(s, vis == .shown, disconnected) }
         }
     }
 
-    /// Hide reflects whether the entity is *effectively* hidden from the menu (auto rules included);
-    /// turning it off force-shows an auto-hidden entity.
-    private func hideBinding(_ s: EntityState, _ disconnected: Set<String>) -> Binding<Bool> {
+    /// A small on/off pill with explicit colors, so the "on" state stays visible even when the
+    /// window is inactive (a `.button` toggle desaturates its accent on focus loss).
+    private func pillToggle(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(.caption).fontWeight(.medium)
+                .foregroundStyle(on ? Color.white : Color.secondary)
+                .padding(.horizontal, 9).padding(.vertical, 3)
+                .background(on ? Color.accentColor : Color.secondary.opacity(0.14), in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Hide reflects effective visibility; turning it off force-shows an auto-hidden entity.
+    private func setHide(_ s: EntityState, _ hide: Bool, _ disconnected: Set<String>) {
         let id = s.entityID
-        return Binding(
-            get: {
-                entityVisibility(s, registry: model.store.registry, settings: model.settings,
-                                 disconnectedDevices: disconnected) != .shown
-            },
-            set: { hide in
-                if hide {
-                    model.settings.shown.remove(id)
-                    model.settings.pinned.removeAll { $0 == id }
-                    model.settings.hidden.insert(id)
-                } else {
-                    model.settings.hidden.remove(id)
-                    model.settings.shown.remove(id)
-                    let stillHidden = entityVisibility(s, registry: model.store.registry, settings: model.settings,
-                                                       disconnectedDevices: disconnected) != .shown
-                    if stillHidden { model.settings.shown.insert(id) }   // still hidden by a rule → force-show
-                }
-                model.saveSettings(); model.dataVersion &+= 1
-            })
+        if hide {
+            model.settings.shown.remove(id)
+            model.settings.pinned.removeAll { $0 == id }
+            model.settings.hidden.insert(id)
+        } else {
+            model.settings.hidden.remove(id)
+            model.settings.shown.remove(id)
+            if entityVisibility(s, registry: model.store.registry, settings: model.settings,
+                                disconnectedDevices: disconnected) != .shown {
+                model.settings.shown.insert(id)            // still hidden by a rule → force-show
+            }
+        }
+        model.saveSettings(); model.dataVersion &+= 1
     }
 
     // MARK: - Alerts
