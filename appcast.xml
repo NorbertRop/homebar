@@ -3,13 +3,13 @@
     <channel>
         <title>HomeBar</title>
         <item>
-            <title>0.1.2</title>
-            <pubDate>Wed, 03 Jun 2026 15:48:48 +0000</pubDate>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
+            <title>0.1.1</title>
+            <pubDate>Wed, 03 Jun 2026 15:39:46 +0000</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>0.1.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/NorbertRop/homebar/releases/download/v0.1.2/HomeBar-0.1.2.zip" length="1569912" type="application/octet-stream" sparkle:edSignature="qZJyWYrt/JjT7y0O4t8X9J4lZ1e92nV2MY0W70GHx4IYq3Y/xb6DXXjs3/HR/Sv0XUhoKDbM+jwg5QNGzgOeBw=="/>
+            <enclosure url="https://github.com/NorbertRop/homebar/releases/download/v0.1.1/HomeBar-0.1.1.zip" length="1565037" type="application/octet-stream" sparkle:edSignature="IWDiJjIuXPv5fWSPAuCU3ZLzERqAb255oIMlnU8ra5tI5oZhCGlKPX5OlByZXsluEUJYHOJ+WEt5iusMx2XVBw=="/>
         </item>
     </channel>
 </rss>
