@@ -6,21 +6,34 @@ struct ClimateRow: View {
     let entityID: String
     var nameOverride: String? = nil
 
+    // Optimistic selections: show the user's pick instantly and keep it until HA's real state
+    // catches up. Some climate integrations confirm a mode/fan change only after a long lag (or
+    // report no change feedback at all), which would otherwise snap the picker back and make it
+    // look like the tap did nothing. Mirrors HASlider's local-value approach.
+    @State private var pendingMode: String?
+    @State private var pendingFan: String?
+
     var body: some View {
+        let _ = model.dataVersion   // re-render when HA confirms a mode/temp change (see AppModel.dataVersion)
         if let s = model.entity(entityID) {
             let c = ClimateState(from: s)
-            let isOn = c.hvacMode != "off"
+            let mode = pendingMode ?? c.hvacMode
+            let isOn = mode != "off"
             VStack(alignment: .leading, spacing: 10) {
                 HStack(spacing: 8) {
                     Image(systemName: "snowflake").frame(width: 18)
                         .foregroundStyle(isOn ? Color.blue : Color.secondary)
                     Text(nameOverride ?? s.friendlyName).lineLimit(1)
                     Spacer()
-                    Picker("", selection: Binding(get: { c.hvacMode },
-                        set: { model.perform(HACommand.setClimateMode(entityID, $0)) })) {
+                    Picker("", selection: Binding(get: { mode }, set: { newMode in
+                        pendingMode = newMode
+                        model.perform(HACommand.setClimateMode(entityID, newMode))
+                    })) {
                         ForEach(c.hvacModes, id: \.self) { Text($0.capitalized).tag($0) }
                     }
                     .labelsHidden().fixedSize().controlSize(.small)
+                    // Trust HA once it reports a (new) confirmed mode; drop the optimistic override.
+                    .onChange(of: c.hvacMode) { _, _ in pendingMode = nil }
                 }
 
                 if isOn, let tgt = c.targetTemperature {
@@ -47,11 +60,14 @@ struct ClimateRow: View {
                             Image(systemName: "fan.fill").font(.caption).foregroundStyle(.secondary)
                             Text("Fan").font(.caption).foregroundStyle(.secondary)
                             Spacer()
-                            Picker("", selection: Binding(get: { c.fanMode ?? "" },
-                                set: { model.perform(HACommand.setClimateFan(entityID, $0)) })) {
+                            Picker("", selection: Binding(get: { pendingFan ?? c.fanMode ?? "" }, set: { newFan in
+                                pendingFan = newFan
+                                model.perform(HACommand.setClimateFan(entityID, newFan))
+                            })) {
                                 ForEach(c.fanModes, id: \.self) { Text($0).tag($0) }
                             }
                             .labelsHidden().fixedSize().controlSize(.small)
+                            .onChange(of: c.fanMode) { _, _ in pendingFan = nil }
                         }
                     }
                 }
