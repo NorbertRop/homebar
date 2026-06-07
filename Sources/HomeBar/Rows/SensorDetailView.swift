@@ -10,6 +10,7 @@ struct SensorDetailView: View {
     @State private var hover: HistoryPoint?
 
     var body: some View {
+        let _ = model.dataVersion   // re-render when the async 24h fetch lands (see AppModel.dataVersion)
         let pts = model.detail(for: entityID) ?? []
         let unit = model.entity(entityID)?.unit
         let color = chartTint
