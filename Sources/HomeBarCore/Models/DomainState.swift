@@ -52,6 +52,14 @@ public struct ClimateState: Sendable, Equatable {
         fanMode = s.attributes["fan_mode"]?.coercedString
         fanModes = s.attributes["fan_modes"]?.stringArray ?? []
     }
+
+    /// The mode to optimistically show when the quick power toggle turns the unit on, before HA
+    /// reports what `climate.turn_on` actually restored. Prefers common active modes (an AC lands
+    /// on Cool), else the first available non-off mode; `nil` if the unit has no on mode.
+    public var defaultOnMode: String? {
+        let preferred = ["cool", "heat_cool", "auto", "heat", "dry", "fan_only"]
+        return preferred.first { hvacModes.contains($0) } ?? hvacModes.first { $0 != "off" }
+    }
 }
 
 public enum Freshness: Sendable, Equatable { case fresh, stale, offline }

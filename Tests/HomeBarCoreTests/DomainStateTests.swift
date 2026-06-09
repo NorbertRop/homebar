@@ -42,6 +42,32 @@ private func loadStates() throws -> [EntityState] {
     #expect(cs.fanModes == ["1", "2", "3"])
 }
 
+// The quick-toggle's optimistic "on" mode: which hvac mode to show the instant the user taps
+// power, before HA confirms what `climate.turn_on` actually restored.
+private func climate(modes: [String], state: String = "off") -> ClimateState {
+    ClimateState(from: EntityState(entityID: "climate.ac", state: state,
+        attributes: ["hvac_modes": .array(modes.map { .string($0) })],
+        lastChanged: .now, lastUpdated: .now))
+}
+
+@Test func defaultOnModePrefersCool() {
+    #expect(climate(modes: ["off", "heat", "cool", "auto"]).defaultOnMode == "cool")
+}
+
+@Test func defaultOnModeFollowsPreferenceOrder() {
+    #expect(climate(modes: ["off", "heat", "auto"]).defaultOnMode == "auto")   // auto before heat
+    #expect(climate(modes: ["off", "heat", "dry"]).defaultOnMode == "heat")    // heat before dry
+}
+
+@Test func defaultOnModeFallsBackToFirstNonOff() {
+    #expect(climate(modes: ["off", "boost", "eco"]).defaultOnMode == "boost")  // none preferred → first non-off
+}
+
+@Test func defaultOnModeNilWhenNoOnMode() {
+    #expect(climate(modes: ["off"]).defaultOnMode == nil)
+    #expect(climate(modes: []).defaultOnMode == nil)
+}
+
 @Test func freshnessClassifies() {
     let now = Date(timeIntervalSince1970: 1000)
     func mk(_ state: String, ageSeconds: TimeInterval) -> EntityState {

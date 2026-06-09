@@ -25,6 +25,25 @@ struct ClimateRow: View {
                         .foregroundStyle(isOn ? Color.blue : Color.secondary)
                     Text(nameOverride ?? s.friendlyName).lineLimit(1)
                     Spacer()
+                    // Quick power toggle: flip on/off without opening the mode menu. Optimistic so
+                    // the row reacts instantly; `climate.turn_on` lets HA restore its own mode, and
+                    // the Picker's onChange below clears the optimistic guess once HA confirms.
+                    if c.hvacModes.contains("off"), let onMode = c.defaultOnMode {
+                        Button {
+                            if isOn {
+                                pendingMode = "off"
+                                model.perform(HACommand.turnOff(entityID))
+                            } else {
+                                pendingMode = onMode
+                                model.perform(HACommand.turnOn(entityID))
+                            }
+                        } label: {
+                            Image(systemName: "power").font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(isOn ? Color.green : Color.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help(isOn ? "Turn off" : "Turn on")
+                    }
                     Picker("", selection: Binding(get: { mode }, set: { newMode in
                         pendingMode = newMode
                         model.perform(HACommand.setClimateMode(entityID, newMode))
