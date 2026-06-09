@@ -22,8 +22,9 @@ enum ConnectionStatus: Equatable {
     /// re-renders on data changes — MenuBarExtra content doesn't reliably track the nested
     /// @Observable `store.entities`.
     var dataVersion = 0
-    /// Recent (~6h) sparkline values per sensor, fetched lightly when a row appears.
-    var histories: [String: [Double]] = [:]
+    /// Recent (~6h) sparkline history per sensor, fetched lightly when a row appears, then
+    /// live-extended (timestamped, so it stays a rolling 6h window) — see `appendLive`.
+    var histories: [String: [HistoryPoint]] = [:]
     private var historyFetchedAt: [String: Date] = [:]
     /// Full (~24h) timestamped history for the expanded detail chart, fetched on click.
     var detailHistory: [String: [HistoryPoint]] = [:]
@@ -49,6 +50,10 @@ enum ConnectionStatus: Equatable {
         static let detailTTL: TimeInterval = 120         // reuse a sensor's 24h history this long
         static let sparklinePoints = 48                  // down-sample target for the inline sparkline
         static let detailPoints = 240                    // down-sample target for the 24h detail chart
+        static let detailWindow: TimeInterval = 24 * 3600 // rolling window an open detail chart keeps live
+        static let detailLiveCap = 2000                  // max points after live-extending a detail series
+        static let sparklineWindow: TimeInterval = 6 * 3600 // rolling window the inline sparkline keeps live
+        static let sparklineLiveCap = 500                // max points after live-extending a sparkline series
     }
 
     init(tokenStore: TokenStore = FileTokenStore()) {
@@ -124,6 +129,7 @@ enum ConnectionStatus: Equatable {
                 }
                 for await change in client.events {
                     store.apply(change)
+                    appendLive(change)
                     dataVersion &+= 1
                     if Date().timeIntervalSince(lastCacheSave) > Tuning.cacheWriteThrottle {
                         try? store.saveCache(to: Self.cacheURL); lastCacheSave = Date()
@@ -217,13 +223,17 @@ enum ConnectionStatus: Equatable {
         Task {
             do {
                 let pts = try await client.history(entityID: id, hours: 6)
-                if pts.count > 1 { histories[id] = Self.downsample(pts.map(\.value), to: Tuning.sparklinePoints); dataVersion &+= 1 }
+                if pts.count > 1 { histories[id] = Self.downsample(pts, to: Tuning.sparklinePoints); dataVersion &+= 1 }
             } catch {
                 historyFetchedAt[id] = .distantPast   // failed fetch → allow retry
             }
         }
     }
-    func sparkline(for id: String) -> [Double]? { histories[id] }
+    func sparkline(for id: String) -> [Double]? {
+        // Down-sample on read: live appends grow the stored series, but the tiny index-spaced
+        // sparkline stays ~48 evenly-distributed points so its shape reads cleanly.
+        histories[id].map { Self.downsample($0.map(\.value), to: Tuning.sparklinePoints) }
+    }
 
     /// Full ~24h fetch for the expanded detail chart, on demand when a sensor is clicked (cached
     /// ~2 min). It's fast (<0.2s), so there's no need to prefetch it for every row.
@@ -244,6 +254,24 @@ enum ConnectionStatus: Equatable {
     }
     func detail(for id: String) -> [HistoryPoint]? { detailHistory[id] }
     func isDetailLoaded(_ id: String) -> Bool { detailLoaded.contains(id) }
+
+    /// Extend any already-loaded chart for this entity with the live reading, so open
+    /// visualizations update in real time instead of freezing on the snapshot fetched when they
+    /// appeared. The detail chart and the inline sparkline share one reading — kept consistent —
+    /// each a bounded rolling window (24h / 6h). No-op for charts not yet loaded, or
+    /// non-numeric/unavailable states.
+    private func appendLive(_ change: StateChange) {
+        guard let s = change.newState, let v = Double(s.state) else { return }
+        let point = HistoryPoint(date: s.lastUpdated, value: v)
+        if let series = detailHistory[change.entityID] {
+            detailHistory[change.entityID] = series.appendingLive(
+                point, window: Tuning.detailWindow, cap: Tuning.detailLiveCap)
+        }
+        if let series = histories[change.entityID] {
+            histories[change.entityID] = series.appendingLive(
+                point, window: Tuning.sparklineWindow, cap: Tuning.sparklineLiveCap)
+        }
+    }
 
     /// Evenly thin a series to at most `n` points so the chart stays cheap.
     private static func downsample<T>(_ xs: [T], to n: Int) -> [T] {
