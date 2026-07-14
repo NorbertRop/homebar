@@ -68,6 +68,48 @@ private func climate(modes: [String], state: String = "off") -> ClimateState {
     #expect(climate(modes: []).defaultOnMode == nil)
 }
 
+// Temperature stepping for the +/- buttons. `base` is the currently displayed target (an
+// optimistic pending value while the user is nudging, else HA's confirmed target), so repeated
+// taps must accumulate and stay within the unit's range.
+private func climateWithTemps(step: Double = 1.0, min: Double = 16, max: Double = 30,
+                              target: Double = 24) -> ClimateState {
+    ClimateState(from: EntityState(entityID: "climate.ac", state: "cool",
+        attributes: ["temperature": .double(target), "min_temp": .double(min),
+                     "max_temp": .double(max), "target_temp_step": .double(step)],
+        lastChanged: .now, lastUpdated: .now))
+}
+
+@Test func climateSteppedTargetNudgesByStep() {
+    let c = climateWithTemps(step: 0.5, target: 24)
+    #expect(c.steppedTarget(from: 24, up: true) == 24.5)
+    #expect(c.steppedTarget(from: 24, up: false) == 23.5)
+}
+
+@Test func climateSteppedTargetClampsToRange() {
+    let c = climateWithTemps(step: 1, min: 16, max: 30)
+    #expect(c.steppedTarget(from: 30, up: true) == 30)    // already at max
+    #expect(c.steppedTarget(from: 16, up: false) == 16)   // already at min
+}
+
+@Test func climateSteppedTargetAccumulates() {
+    let c = climateWithTemps(step: 0.5, target: 24)
+    let once = c.steppedTarget(from: 24, up: true)
+    #expect(c.steppedTarget(from: once, up: true) == 25.0)   // two taps build on each other
+}
+
+// Some integrations report target_temp_step: 0 (or omit it), which would make +/- a no-op.
+@Test func climateStepFallsBackWhenNonPositive() {
+    #expect(climateWithTemps(step: 0).targetTempStep == 0.5)
+    #expect(climateWithTemps(step: -1).targetTempStep == 0.5)
+}
+
+// Setpoint display keeps half-degree steps visible without an ugly ".0" on whole degrees.
+@Test func setpointFormatDropsTrailingZero() {
+    #expect(formatSetpoint(24) == "24")
+    #expect(formatSetpoint(21.0) == "21")
+    #expect(formatSetpoint(23.5) == "23.5")
+}
+
 @Test func freshnessClassifies() {
     let now = Date(timeIntervalSince1970: 1000)
     func mk(_ state: String, ageSeconds: TimeInterval) -> EntityState {

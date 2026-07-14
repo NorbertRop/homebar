@@ -12,6 +12,7 @@ struct ClimateRow: View {
     // look like the tap did nothing. Mirrors HASlider's local-value approach.
     @State private var pendingMode: String?
     @State private var pendingFan: String?
+    @State private var pendingTemp: Double?
 
     var body: some View {
         let _ = model.dataVersion   // re-render when HA confirms a mode/temp change (see AppModel.dataVersion)
@@ -55,24 +56,34 @@ struct ClimateRow: View {
                     .onChange(of: c.hvacMode) { _, _ in pendingMode = nil }
                 }
 
-                if isOn, let tgt = c.targetTemperature {
+                if isOn, let confirmed = c.targetTemperature {
+                    // Optimistic like the mode/fan pickers: nudge from the displayed value (a pending
+                    // guess while the user taps, else HA's confirmed target) so the number moves
+                    // instantly and repeated taps accumulate instead of waiting on HA's echo.
+                    let tgt = pendingTemp ?? confirmed
                     HStack {
                         Button {
-                            model.perform(HACommand.setClimateTemperature(entityID, max(c.minTemp, tgt - c.targetTempStep)))
+                            let next = c.steppedTarget(from: tgt, up: false)
+                            pendingTemp = next
+                            model.perform(HACommand.setClimateTemperature(entityID, next))
                         } label: { Image(systemName: "minus.circle.fill").font(.title2) }
                         Spacer()
                         VStack(spacing: 0) {
-                            Text("\(tgt, specifier: "%.0f")°").font(.title2).fontWeight(.semibold).monospacedDigit()
+                            Text("\(formatSetpoint(tgt))°").font(.title2).fontWeight(.semibold).monospacedDigit()
                             if let cur = c.currentTemperature {
                                 Text("now \(cur, specifier: "%.0f")°").font(.caption2).foregroundStyle(.secondary)
                             }
                         }
                         Spacer()
                         Button {
-                            model.perform(HACommand.setClimateTemperature(entityID, min(c.maxTemp, tgt + c.targetTempStep)))
+                            let next = c.steppedTarget(from: tgt, up: true)
+                            pendingTemp = next
+                            model.perform(HACommand.setClimateTemperature(entityID, next))
                         } label: { Image(systemName: "plus.circle.fill").font(.title2) }
                     }
                     .buttonStyle(.plain).foregroundStyle(.tint)
+                    // Trust HA once it reports a (new) confirmed target; drop the optimistic override.
+                    .onChange(of: c.targetTemperature) { _, _ in pendingTemp = nil }
 
                     if !c.fanModes.isEmpty {
                         HStack(spacing: 6) {

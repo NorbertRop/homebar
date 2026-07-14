@@ -48,7 +48,8 @@ public struct ClimateState: Sendable, Equatable {
         targetTemperature = s.attributes["temperature"]?.doubleValue
         minTemp = s.attributes["min_temp"]?.doubleValue ?? 7
         maxTemp = s.attributes["max_temp"]?.doubleValue ?? 35
-        targetTempStep = s.attributes["target_temp_step"]?.doubleValue ?? 0.5
+        let step = s.attributes["target_temp_step"]?.doubleValue ?? 0.5
+        targetTempStep = step > 0 ? step : 0.5   // some integrations report 0 → keep +/- usable
         fanMode = s.attributes["fan_mode"]?.coercedString
         fanModes = s.attributes["fan_modes"]?.stringArray ?? []
     }
@@ -60,6 +61,21 @@ public struct ClimateState: Sendable, Equatable {
         let preferred = ["cool", "heat_cool", "auto", "heat", "dry", "fan_only"]
         return preferred.first { hvacModes.contains($0) } ?? hvacModes.first { $0 != "off" }
     }
+
+    /// The target to send when the user nudges the setpoint one step, clamped to the unit's range.
+    /// `base` is the currently displayed target — an optimistic pending value while the user is
+    /// nudging, else HA's confirmed target — so repeated taps accumulate instead of snapping back
+    /// to HA's (possibly lagging) confirmed value.
+    public func steppedTarget(from base: Double, up: Bool) -> Double {
+        let next = up ? base + targetTempStep : base - targetTempStep
+        return Swift.min(maxTemp, Swift.max(minTemp, next))
+    }
+}
+
+/// Format a climate setpoint: whole values show no decimal ("24"), fractional values show one
+/// ("23.5"). Keeps half-degree steps visible without an ugly ".0" on whole degrees.
+public func formatSetpoint(_ value: Double) -> String {
+    value.rounded() == value ? String(format: "%.0f", value) : String(format: "%.1f", value)
 }
 
 public enum Freshness: Sendable, Equatable { case fresh, stale, offline }
